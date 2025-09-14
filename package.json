@@ -1,0 +1,21 @@
+{
+  "name": "torus-complex",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+  "dev": "vite",
+  "build": "vite build",
+  "preview": "vite preview",
+  "test": "vitest"
+  },
+  "dependencies": {
+    "three": "^0.155.0",
+    "dat.gui": "^0.7.9",
+    "file-saver": "^2.0.5"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0",
+    "vitest": "^1.0.0"
+  }
+}
