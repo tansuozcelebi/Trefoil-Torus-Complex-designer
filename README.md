@@ -3,6 +3,13 @@
 Bunu üniversitede yazmak için 2 ay uğraşmışken AI ile 2 saatte bitti.
 Muazzam kaliteli ayrıca ahde edip gölgelendiriyor.
 
+![alt text](image.png)
+
+Bunlara ek olarak bilinen sorunları var. Render işi ok parametreli biliyorsunuz.
+
+![alt text](image-1.png)
+
+
 A small Vite + Three.js demo that renders a parametric trefoil-like knot with interactive controls.
 
 Quick start (PowerShell):
