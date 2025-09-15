@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { GUI } from 'dat.gui';
+import { setupGUI } from './ui/guiMenu.js';
 import { TrefoilCurve } from './trefoil.js';
 import { SeptafoilCurve } from './objects/septafoil.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -81,6 +81,10 @@ tabs.forEach((name) => {
 function showTab(name){
   Object.keys(panels).forEach(k => panels[k].style.display = 'none');
   if (panels[name]) panels[name].style.display = 'block';
+  // If Object tab is selected, ensure Controls GUI is visible
+  if (name === 'Object' && typeof window.showControlsGUI === 'function') {
+    window.showControlsGUI();
+  }
 }
 
 // default open Home
@@ -294,7 +298,8 @@ const params = {
   envMapIntensity: 1.0,
   autoRotate: false,
   rotationSpeed: 0.12,
-  texture: 'none'
+  texture: 'none',
+  mathWireframeColor: '#000000'
 };
 
 // 6-axis transform controls (position in world units, rotation in degrees)
@@ -305,72 +310,19 @@ params.rotX = 0.0;
 params.rotY = 0.0;
 params.rotZ = 0.0;
 
-const gui = new GUI({ width: 320 });
-
-// GUI folders
-const geomFolder = gui.addFolder('Geometry');
-geomFolder.add(params, 'a', 0.1, 5.0, 0.01).onChange(rebuild);
-geomFolder.add(params, 'b', 0.0, 2.0, 0.01).onChange(rebuild);
-geomFolder.add(params, 'p', 1, 5, 1).onChange(rebuild);
-geomFolder.add(params, 'q', 1, 5, 1).onChange(rebuild);
-// allow switching between different curve types
-geomFolder.add(params, 'objectType', ['Trefoil', 'Septafoil']).name('Object Type').onChange(rebuild);
-geomFolder.add(params, 'tubeRadius', 0.01, 1.0, 0.01).onChange(rebuild);
-geomFolder.add(params, 'uSegments', 16, 2000, 1).onChange(rebuild);
-geomFolder.add(params, 'vSegments', 3, 128, 1).onChange(rebuild);
-geomFolder.open();
-
-const matFolder = gui.addFolder('Material');
-matFolder.add(params, 'materialType', ['Metallic', 'Opaque', 'Transparent']).onChange(updateMaterial);
-matFolder.add(params, 'metalness', 0, 1, 0.01).onChange(updateMaterial);
-matFolder.add(params, 'roughness', 0, 1, 0.01).onChange(updateMaterial);
-matFolder.add(params, 'opacity', 0.01, 1, 0.01).onChange(updateMaterial);
-matFolder.add(params, 'ior', 1.0, 2.5, 0.01).onChange(updateMaterial);
-matFolder.add(params, 'useTransmission').onChange(updateMaterial);
-matFolder.add(params, 'fresnel').name('Fresnel Highlight').onChange(updateMaterial);
-matFolder.addColor(params, 'materialColor').name('Material Color').onChange((v) => {
-  if (knotMaterial) knotMaterial.color.set(v);
-});
-matFolder.addColor(params, 'wireframeColor').name('Wireframe Color').onChange((v) => {
-  if (wireframeMesh) wireframeMesh.material.color.set(v);
-});
-matFolder.open();
-
-const lightsFolder = gui.addFolder('Lighting');
-lightsFolder.add(params, 'spotIntensity', 0, 5, 0.01).onChange((v) => { spot.intensity = v; });
-lightsFolder.add(params, 'ambientIntensity', 0, 2, 0.01).onChange((v) => { ambient.intensity = v; });
-lightsFolder.add(params, 'envMapIntensity', 0, 5, 0.01).onChange((v) => { if (knotMaterial) knotMaterial.envMapIntensity = v; });
-lightsFolder.add(params, 'showReflection').onChange(toggleReflection);
-lightsFolder.add(params, 'reflectorOpacity', 0.0, 1.0, 0.01).name('Reflector Opacity').onChange((v) => {
-  if (reflector && reflector.material){ reflector.material.transparent = v < 1.0; reflector.material.opacity = v; }
-});
-lightsFolder.open();
-
-const viewFolder = gui.addFolder('View');
-viewFolder.add(params, 'useWireframe').onChange(toggleWireframe);
-viewFolder.add(params, 'showGrid').onChange(toggleGrid);
-viewFolder.add(params, 'autoRotate').onChange(() => {});
-viewFolder.add(params, 'rotationSpeed', 0, 2, 0.01);
-viewFolder.open();
-
-// 6-axis control folder
-const sixFolder = gui.addFolder('6-Axis Controls');
-sixFolder.add(params, 'posX', -10, 10, 0.01).name('posX').onChange(applyTransform);
-sixFolder.add(params, 'posY', -10, 10, 0.01).name('posY').onChange(applyTransform);
-sixFolder.add(params, 'posZ', -10, 10, 0.01).name('posZ').onChange(applyTransform);
-sixFolder.add(params, 'rotX', -180, 180, 0.1).name('rotX').onChange(applyTransform);
-sixFolder.add(params, 'rotY', -180, 180, 0.1).name('rotY').onChange(applyTransform);
-sixFolder.add(params, 'rotZ', -180, 180, 0.1).name('rotZ').onChange(applyTransform);
-sixFolder.open();
-
-const exportFolder = gui.addFolder('Export');
-exportFolder.add({ screenshot: takeScreenshot }, 'screenshot');
-exportFolder.open();
 
 let knotMesh = null;
 let wireframeMesh = null;
 let knotGeometry = null;
 let knotMaterial = null;
+
+// Setup GUI menu (objectType at the top)
+const { gui, viewFolder } = setupGUI(params, rebuild, updateMaterial, toggleReflection, toggleWireframe, toggleGrid, applyTransform, knotMaterial, wireframeMesh, spot, ambient, reflector);
+
+// Export folder (if needed)
+// const exportFolder = gui.addFolder('Export');
+// exportFolder.add({ screenshot: takeScreenshot }, 'screenshot');
+// exportFolder.open();
 
 // Orbit controls
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -518,6 +470,10 @@ function updateMaterial(){
   knotMaterial.envMap = currentEnvMap;
   knotMaterial.needsUpdate = true;
   if (knotMesh) knotMesh.material = knotMaterial;
+  if (wireframeMesh && wireframeMesh.material) {
+    wireframeMesh.material.color.set(params.wireframeColor);
+    wireframeMesh.material.needsUpdate = true;
+  }
 }
 
 function toggleWireframe(v){
@@ -732,24 +688,21 @@ function createSea(){
   scene.add(seaMesh);
 }
 
-function createMathSurface(){
-  const size = 100;
-  const seg = 128;
-  const geo = new THREE.PlaneGeometry(size, size, seg, seg);
-  // deform vertices to a mathematical surface
-  for (let i = 0; i < geo.attributes.position.count; i++){
-    const x = geo.attributes.position.getX(i);
-    const y = geo.attributes.position.getY(i);
-    const z = Math.sin(x*0.1)*Math.cos(y*0.1) * 4.0;
-    geo.attributes.position.setZ(i, z);
+window.setMathWireframeColor = function(color) {
+  if (mathObj && mathObj.setWireframeColor) {
+    mathObj.setWireframeColor(color);
   }
-  geo.computeVertexNormals();
-  const mat = new THREE.MeshStandardMaterial({ color: 0xaacc88, roughness: 0.7, metalness: 0.0 });
-  mathMesh = new THREE.Mesh(geo, mat);
-  mathMesh.rotation.x = -Math.PI/2;
-  mathMesh.position.y = ground.position.y;
-  mathMesh.receiveShadow = true;
-  scene.add(mathMesh);
+};
+
+function createMathSurface(){
+  if (mathObj) {
+    scene.remove(mathObj.mesh);
+    scene.remove(mathObj.wireframe);
+    mathObj.dispose();
+  }
+  mathObj = makeMath(ground.position.y);
+  scene.add(mathObj.mesh);
+  scene.add(mathObj.wireframe);
 }
 
 // Resize handler
@@ -803,11 +756,20 @@ animate();
 // expose rebuild for GUI callbacks
 window.rebuildKnot = rebuild;
 
+
 // move dat.GUI into the Object panel so the panel contains the controls
 // dat.GUI creates a domElement we can relocate
-const guiDom = gui.domElement;
-guiDom.style.position = 'static';
-objectPanel.appendChild(guiDom);
+window.showControlsGUI = function() {
+  if (!objectPanel.contains(gui.domElement)) {
+    gui.domElement.style.position = 'static';
+    objectPanel.appendChild(gui.domElement);
+  }
+  gui.domElement.style.display = 'block';
+};
+// Show GUI in Object panel by default if Object tab is open
+if (panels['Object'].style.display === 'block') {
+  window.showControlsGUI();
+}
 
 // populate Home/About/Help panels with content (About/Help loaded from modules)
 import { getAboutHtml } from './ui/about.js';

@@ -17,5 +17,18 @@ export function createMathSurface(groundY){
   mathMesh.position.y = groundY;
   mathMesh.receiveShadow = true;
 
-  return { mesh: mathMesh, dispose: () => { geo.dispose(); mat.dispose(); } };
+  // Wireframe grid overlay
+  const wireMat = new THREE.MeshBasicMaterial({ color: 0x000000, wireframe: true });
+  const wireframeMesh = new THREE.Mesh(geo, wireMat);
+  wireframeMesh.rotation.x = -Math.PI/2;
+  wireframeMesh.position.y = groundY + 0.01; // slight offset to avoid z-fighting
+  wireframeMesh.renderOrder = 2;
+
+  // Return both meshes and allow wireframe color to be set
+  return {
+    mesh: mathMesh,
+    wireframe: wireframeMesh,
+    setWireframeColor: (color) => { wireMat.color.set(color); },
+    dispose: () => { geo.dispose(); mat.dispose(); wireMat.dispose(); }
+  };
 }
