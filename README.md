@@ -21,10 +21,24 @@ npm run dev
 
 Open the URL printed by Vite (usually http://localhost:5173) in your browser.
 
+
 Features:
 - Parametric knot implemented as `TrefoilCurve` (see `src/trefoil.js`).
 - Tube geometry via `THREE.TubeGeometry`.
 - GUI controls (dat.GUI) for parameters, materials, lighting, and export.
+- **Keyboard Shortcuts:**
+
+| Key         | Action                |
+|-------------|-----------------------|
+| W/S         | posY up/down          |
+| A/D         | posX left/right       |
+| Q/E         | posZ forward/back     |
+| I/K         | a increase/decrease   |
+| J/L         | b decrease/increase   |
+| U/O         | p decrease/increase   |
+| N/M         | q decrease/increase   |
+
+Hold Shift for larger steps (position).
 
 Notes:
 - To run:

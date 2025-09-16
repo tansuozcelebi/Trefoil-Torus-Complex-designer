@@ -1,3 +1,46 @@
+// --- Klavye kontrolleri ---
+window.addEventListener('keydown', (e) => {
+  // Aktif obje yoksa çık
+  const rec = getActiveRecord && getActiveRecord();
+  if (!rec) return;
+  let changed = false;
+  // Pozisyon kontrolleri (WASDQE)
+  const step = e.shiftKey ? 0.2 : 0.05;
+  switch (e.key.toLowerCase()) {
+    case 'w': params.posY += step; changed = true; break;
+    case 's': params.posY -= step; changed = true; break;
+    case 'a': params.posX -= step; changed = true; break;
+    case 'd': params.posX += step; changed = true; break;
+    case 'q': params.posZ -= step; changed = true; break;
+    case 'e': params.posZ += step; changed = true; break;
+    // a, b, p, q parametreleri (I/K/J/L/U/O)
+    case 'i': params.a += 0.05; changed = true; break;
+    case 'k': params.a -= 0.05; changed = true; break;
+    case 'j': params.b -= 0.05; changed = true; break;
+    case 'l': params.b += 0.05; changed = true; break;
+    case 'u': params.p = Math.max(1, params.p - 1); changed = true; break;
+    case 'o': params.p = Math.min(15, params.p + 1); changed = true; break;
+    case 'n': params.q = Math.max(1, params.q - 1); changed = true; break;
+    case 'm': params.q = Math.min(15, params.q + 1); changed = true; break;
+  }
+  if (changed) {
+    // Clamp değerler
+    params.a = Math.max(0.1, Math.min(5, params.a));
+    params.b = Math.max(0, Math.min(2, params.b));
+    params.p = Math.round(params.p);
+    params.q = Math.round(params.q);
+    // Güncel parametreleri kaydet
+    saveParamsToActive();
+    if (['i','k','j','l','u','o','n','m'].includes(e.key.toLowerCase())) {
+      rebuild();
+    } else {
+      applyTransform();
+    }
+    try { if (typeof gui !== 'undefined') gui.updateDisplay(); } catch(e) {}
+    e.preventDefault();
+  }
+});
+// ...imports...
 import * as THREE from 'three';
 import { setupGUI } from './ui/guiMenu.js';
 import { TrefoilCurve } from './trefoil.js';
@@ -5,6 +48,10 @@ import { SeptafoilCurve } from './objects/septafoil.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { Reflector } from 'three/examples/jsm/objects/Reflector.js';
 import { saveAs } from 'file-saver';
+
+// Raycaster ve pointer tanımı sadece renderer'dan sonra olacak
+
+
 
 // App container
 const container = document.createElement('div');
@@ -38,6 +85,13 @@ navBar.style.padding = '6px 10px';
 navBar.style.borderRadius = '8px';
 navBar.style.backdropFilter = 'blur(6px)';
 document.body.appendChild(navBar);
+
+// area to show active object info
+const activeInfo = document.createElement('div');
+activeInfo.style.marginLeft = '12px';
+activeInfo.style.color = '#3fa7ff'; // blue
+activeInfo.style.fontSize = '12px';
+navBar.appendChild(activeInfo);
 
 function makeTab(label){
   const t = document.createElement('button');
@@ -75,7 +129,10 @@ tabs.forEach((name) => {
   panel.style.display = 'none';
   document.body.appendChild(panel);
   panels[name] = panel;
-});
+  });
+
+
+
 
 // quick helper to toggle tabs
 function showTab(name){
@@ -318,6 +375,217 @@ const params = {
   mathWireframeColor: '#000000'
 };
 
+// Multi-object: in-memory list and helpers
+let objects = []; // { id, name, desc, type, params, mesh, wireframe, geometry, material }
+let activeId = null;
+let nextId = 1;
+
+function updateActiveHeader(rec){
+  const r = rec || objects.find(o => o.id === activeId);
+  if (!r){ activeInfo.textContent = ''; return; }
+  activeInfo.textContent = `Active [#${r.id}] ${r.name}${r.desc ? ' — ' + r.desc : ''}`;
+}
+
+function getActiveRecord(){ return objects.find(o => o.id === activeId) || null; }
+
+function setActive(id){
+  const rec = objects.find(o => o.id === id);
+  if (!rec) return;
+  activeId = id;
+  // sync GUI params from record
+  Object.assign(params, rec.params);
+  try { if (typeof gui !== 'undefined') gui.updateDisplay(); } catch(e) {}
+  updateActiveHeader(rec);
+  // mirror globals for compatibility
+  knotMesh = rec.mesh || null;
+  wireframeMesh = rec.wireframe || null;
+  knotGeometry = rec.geometry || null;
+  knotMaterial = rec.material || null;
+  updateStats();
+  // ensure Controls show
+  try { if (window.showControlsGUI) window.showControlsGUI(); } catch(e) {}
+}
+
+function addObjectFromPreset(preset){
+  const id = nextId++;
+  const rec = {
+    id,
+    name: preset.name || `Object ${id}`,
+    desc: preset.desc || '',
+    type: preset.type || 'Trefoil',
+    params: {
+      objectType: preset.type || 'Trefoil',
+      a: preset.params?.a ?? params.a,
+      b: preset.params?.b ?? params.b,
+      p: preset.params?.p ?? params.p,
+      q: preset.params?.q ?? params.q,
+      tubeRadius: preset.params?.tubeRadius ?? params.tubeRadius,
+      uSegments: preset.params?.uSegments ?? params.uSegments,
+      vSegments: preset.params?.vSegments ?? params.vSegments,
+      // material defaults
+      materialType: params.materialType,
+      metalness: params.metalness,
+      roughness: params.roughness,
+      opacity: params.opacity,
+      ior: params.ior,
+      useTransmission: params.useTransmission,
+      fresnel: params.fresnel,
+      materialColor: params.materialColor,
+      wireframeColor: params.wireframeColor,
+      // view
+      useWireframe: params.useWireframe,
+      posX: 0, posY: 0, posZ: 0, rotX: 0, rotY: 0, rotZ: 0
+    }
+  };
+  objects.push(rec);
+  setActive(id);
+  rebuild();
+  refreshObjectsList();
+}
+
+function ensureInitialObject(){
+  if (objects.length === 0){
+    addObjectFromPreset({ name: 'Object 1', desc: 'Initial', type: params.objectType, params: { a: params.a, b: params.b, p: params.p, q: params.q, tubeRadius: params.tubeRadius, uSegments: params.uSegments, vSegments: params.vSegments } });
+  }
+}
+
+// Presets and storage
+const defaultPresets = [
+  { key: 'trefoilClassic', name: 'Trefoil Classic', desc: 'p=2,q=3', type: 'Trefoil', params: { a: 2, b: 1, p: 2, q: 3 } },
+  { key: 'septafoilTight', name: 'Septafoil Tight', desc: 'p=3,q=7', type: 'Septafoil', params: { a: 1.5, b: 0.8, p: 3, q: 7 } },
+  { key: 'torusKnot54', name: 'Trefoil (5,4)', desc: 'p=5,q=4', type: 'Trefoil', params: { a: 2.4, b: 0.9, p: 5, q: 4 } }
+];
+
+function loadUserPresets(){
+  try { return JSON.parse(localStorage.getItem('tc.userPresets') || '[]'); } catch(e){ return []; }
+}
+function saveUserPresets(arr){
+  try { localStorage.setItem('tc.userPresets', JSON.stringify(arr||[])); } catch(e) {}
+}
+
+function saveParamsToActive(){
+  const rec = getActiveRecord();
+  if (!rec) return;
+  rec.params = {
+    objectType: params.objectType,
+    a: params.a, b: params.b, p: params.p, q: params.q,
+    tubeRadius: params.tubeRadius, uSegments: params.uSegments, vSegments: params.vSegments,
+    materialType: params.materialType, metalness: params.metalness, roughness: params.roughness,
+    opacity: params.opacity, ior: params.ior, useTransmission: params.useTransmission,
+    fresnel: params.fresnel, materialColor: params.materialColor, wireframeColor: params.wireframeColor,
+    useWireframe: params.useWireframe,
+    posX: params.posX, posY: params.posY, posZ: params.posZ,
+    rotX: params.rotX, rotY: params.rotY, rotZ: params.rotZ
+  };
+}
+
+function createPresetThumbnail(preset){
+  return new Promise((resolve) => {
+    try {
+      const w = 160, h = 120;
+      const renderer2 = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+      renderer2.setSize(w, h);
+      const scn = new THREE.Scene();
+      scn.background = null;
+      const cam = new THREE.PerspectiveCamera(45, w/h, 0.1, 100);
+      cam.position.set(3, 2, 4);
+      cam.lookAt(0,0,0);
+      const curve = (preset.type === 'Septafoil')
+        ? new SeptafoilCurve(preset.params?.a ?? 2, preset.params?.b ?? 1, preset.params?.p ?? 2, preset.params?.q ?? 3)
+        : new TrefoilCurve(preset.params?.a ?? 2, preset.params?.b ?? 1, preset.params?.p ?? 2, preset.params?.q ?? 3);
+      const geo = new THREE.TubeGeometry(curve, 200, preset.params?.tubeRadius ?? 0.25, 16, true);
+      if (geo.center) geo.center();
+      const mat = new THREE.MeshBasicMaterial({ color: 0x9fbfff, wireframe: false });
+      const mesh = new THREE.Mesh(geo, mat);
+      scn.add(mesh);
+      const light = new THREE.AmbientLight(0xffffff, 1.0);
+      scn.add(light);
+      renderer2.render(scn, cam);
+      const url = renderer2.domElement.toDataURL('image/png');
+      // cleanup
+      geo.dispose(); mat.dispose(); renderer2.dispose();
+      resolve(url);
+    } catch(e){ resolve(''); }
+  });
+}
+
+function buildHomeUI(){
+  const home = panels['Home'];
+  if (!home) return;
+  const userPresets = loadUserPresets();
+  home.innerHTML = `
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+      <strong>Presets</strong>
+      <div>
+        <input id="presetName" placeholder="Preset name" style="padding:4px 6px; border-radius:4px; border:1px solid #444; background:#111; color:#fff; width:160px;" />
+        <button id="savePresetBtn" style="padding:6px 10px; border:none; border-radius:6px; background:#2a2a2e; color:#fff; cursor:pointer;">Save current</button>
+      </div>
+    </div>
+    <div id="presetRow" style="margin-top:10px; display:flex; gap:10px; overflow-x:auto; padding-bottom:6px;">
+    </div>
+    <div style="margin-top:14px;"><strong>Objects</strong></div>
+    <div id="objectsList" style="margin-top:6px; display:flex; flex-direction:column; gap:6px;"></div>
+  `;
+  const row = home.querySelector('#presetRow');
+  const allPresets = [...defaultPresets, ...userPresets];
+  allPresets.forEach(async (p) => {
+    const card = document.createElement('div');
+    card.style.minWidth = '180px';
+    card.style.background = 'rgba(255,255,255,0.03)';
+    card.style.border = '1px solid rgba(255,255,255,0.1)';
+    card.style.borderRadius = '8px';
+    card.style.padding = '8px';
+    const img = document.createElement('img');
+    img.style.width = '100%'; img.style.aspectRatio = '4/3'; img.style.objectFit = 'cover'; img.style.borderRadius = '6px';
+    img.src = await createPresetThumbnail(p);
+    const title = document.createElement('div');
+    title.textContent = p.name;
+    title.style.marginTop = '6px'; title.style.fontWeight = '600';
+    const desc = document.createElement('div'); desc.textContent = p.desc || ''; desc.style.opacity = '0.8'; desc.style.fontSize = '12px';
+    const addBtn = document.createElement('button');
+    addBtn.textContent = 'Add';
+    addBtn.style.marginTop = '8px'; addBtn.style.width = '100%';
+    addBtn.style.padding = '6px 10px'; addBtn.style.border = 'none'; addBtn.style.borderRadius = '6px'; addBtn.style.background = '#2a2a2e'; addBtn.style.color = '#fff';
+    addBtn.onclick = () => addObjectFromPreset(p);
+    card.appendChild(img); card.appendChild(title); card.appendChild(desc); card.appendChild(addBtn);
+    row.appendChild(card);
+  });
+
+  home.querySelector('#savePresetBtn').addEventListener('click', () => {
+    const name = home.querySelector('#presetName').value.trim() || `Preset ${Date.now()}`;
+    const rec = getActiveRecord();
+    if (!rec) return;
+    const newPreset = { key: 'user-' + Date.now(), name, desc: '', type: rec.params.objectType, params: { a: rec.params.a, b: rec.params.b, p: rec.params.p, q: rec.params.q, tubeRadius: rec.params.tubeRadius, uSegments: rec.params.uSegments, vSegments: rec.params.vSegments } };
+    const arr = loadUserPresets(); arr.push(newPreset); saveUserPresets(arr);
+    buildHomeUI();
+  });
+
+  refreshObjectsList();
+}
+
+function refreshObjectsList(){
+  const el = panels['Home']?.querySelector('#objectsList');
+  if (!el) return;
+  el.innerHTML = '';
+  objects.forEach((o) => {
+    const row = document.createElement('div');
+    row.style.display = 'flex'; row.style.alignItems = 'center'; row.style.gap = '8px';
+    const btn = document.createElement('button'); btn.textContent = `#${o.id} ${o.name}`; btn.style.flex = '1'; btn.style.padding = '6px 8px'; btn.style.border = 'none'; btn.style.borderRadius = '6px'; btn.style.background = (o.id===activeId?'#3a3a3f':'#2a2a2e'); btn.style.color='#fff';
+    btn.onclick = () => { setActive(o.id); };
+    const del = document.createElement('button'); del.textContent = '✕'; del.style.padding='6px 8px'; del.style.border='none'; del.style.borderRadius='6px'; del.style.background='#512'; del.style.color='#fff';
+    del.onclick = () => {
+      // remove meshes from scene
+      if (o.wireframe){ try { o.wireframe.geometry.dispose(); o.wireframe.material.dispose(); } catch(e){} if (o.wireframe.parent) o.wireframe.parent.remove(o.wireframe); }
+      if (o.mesh){ try { o.mesh.geometry.dispose(); o.mesh.material.dispose(); } catch(e){} if (o.mesh.parent) o.mesh.parent.remove(o.mesh); }
+      objects = objects.filter(x => x.id !== o.id);
+      if (activeId === o.id){ activeId = objects[0]?.id ?? null; setActive(activeId); }
+      refreshObjectsList(); updateStats();
+    };
+    row.appendChild(btn); row.appendChild(del);
+    el.appendChild(row);
+  });
+}
+
 // 6-axis transform controls (position in world units, rotation in degrees)
 params.posX = 0.0;
 params.posY = 0.0;
@@ -333,7 +601,7 @@ let knotGeometry = null;
 let knotMaterial = null;
 
 // Setup GUI menu (objectType at the top)
-const { gui, viewFolder } = setupGUI(params, rebuild, updateMaterial, toggleReflection, toggleWireframe, toggleGrid, applyTransform, knotMaterial, wireframeMesh, spot, ambient, reflector);
+const { gui, viewFolder } = setupGUI(params, rebuild, updateMaterial, toggleReflection, toggleWireframe, toggleGrid, applyTransform, knotMaterial, wireframeMesh, spot, ambient, reflector, saveParamsToActive);
 
 // Export folder (if needed)
 // const exportFolder = gui.addFolder('Export');
@@ -352,8 +620,8 @@ controls.autoRotateSpeed = params.rotationSpeed * 10;
 // bind GUI auto-rotate and rotation speed
 viewFolder.__controllers.forEach(c => { /* keep existing references */ });
 viewFolder.__controllers = viewFolder.__controllers || [];
-viewFolder.add(params, 'autoRotate').onChange((v) => { controls.autoRotate = v; });
-viewFolder.add(params, 'rotationSpeed', 0, 2, 0.01).onChange((v) => { controls.autoRotateSpeed = v * 10; });
+viewFolder.add(params, 'autoRotate').onChange((v) => { controls.autoRotate = v; saveParamsToActive(); });
+viewFolder.add(params, 'rotationSpeed', 0, 2, 0.01).onChange((v) => { controls.autoRotateSpeed = v * 10; saveParamsToActive(); });
 
 function createMaterial(){
   const mat = new THREE.MeshPhysicalMaterial({
@@ -381,7 +649,14 @@ function createMaterial(){
   return mat;
 }
 
+
 function rebuild(){
+  // Tüm objelerin mesh ve wireframe'lerini sahneden kaldır
+  for (const o of objects) {
+    if (o.mesh && o.mesh.parent) o.mesh.parent.remove(o.mesh);
+    if (o.wireframe && o.wireframe.parent) o.wireframe.parent.remove(o.wireframe);
+  }
+
   // LOD: reduce uSegments on small screens
   const isMobile = window.innerWidth < 800 || window.devicePixelRatio > 2.5;
   const uSeg = isMobile ? Math.max(64, Math.round(params.uSegments * 0.25)) : params.uSegments;
@@ -423,16 +698,30 @@ function rebuild(){
   knotMesh = new THREE.Mesh(knotGeometry, knotMaterial);
   knotMesh.castShadow = true;
   knotMesh.receiveShadow = true;
-  // ensure initial transform applied
-  applyTransform();
+
+  // --- Apply 6-axis transform from active object's params (not just zero) ---
+  // If available, use the active object's params for transform
+  let rec = getActiveRecord && getActiveRecord();
+  let px = params.posX, py = params.posY, pz = params.posZ, rx = params.rotX, ry = params.rotY, rz = params.rotZ;
+  if (rec && rec.params) {
+    px = rec.params.posX ?? px;
+    py = rec.params.posY ?? py;
+    pz = rec.params.posZ ?? pz;
+    rx = rec.params.rotX ?? rx;
+    ry = rec.params.rotY ?? ry;
+    rz = rec.params.rotZ ?? rz;
+  }
+  knotMesh.position.set(px, py, pz);
+  knotMesh.rotation.set(THREE.MathUtils.degToRad(rx), THREE.MathUtils.degToRad(ry), THREE.MathUtils.degToRad(rz));
+
   scene.add(knotMesh);
 
-  // Keep camera fixed across rebuilds; just position object and aim light
+  // Keep camera fixed across rebuilds; just aim light
   if (knotGeometry && knotGeometry.boundingSphere){
     const radius = knotGeometry.boundingSphere.radius;
     const upOffset = radius * 2.0 * 0.3; // raise object above ground proportionally
-    knotMesh.position.set(0, upOffset, 0);
-    if (wireframeMesh) wireframeMesh.position.set(0, upOffset, 0);
+    // Optionally, you can add upOffset to py if you want to keep the object above ground
+    // knotMesh.position.y += upOffset;
     spot.target.position.copy(knotMesh.position);
   }
 
@@ -448,6 +737,15 @@ function rebuild(){
   toggleWireframe(params.useWireframe);
   // update vertex/face stats
   updateStats();
+
+  // Aktif objenin kaydına mesh, geometry, material referanslarını güncelle
+  const rec2 = getActiveRecord && getActiveRecord();
+  if (rec2) {
+    rec2.mesh = knotMesh;
+    rec2.geometry = knotGeometry;
+    rec2.material = knotMaterial;
+    rec2.wireframe = wireframeMesh;
+  }
 }
 
 function applyTransform(){
@@ -455,10 +753,11 @@ function applyTransform(){
   knotMesh.position.set(params.posX, params.posY, params.posZ);
   knotMesh.rotation.set(THREE.MathUtils.degToRad(params.rotX), THREE.MathUtils.degToRad(params.rotY), THREE.MathUtils.degToRad(params.rotZ));
   if (wireframeMesh){
-  // wireframe is a child of knotMesh; it inherits transforms so avoid manual offsets
-  wireframeMesh.position.set(0,0,0);
-  wireframeMesh.rotation.set(0,0,0);
+    // wireframe is a child of knotMesh; it inherits transforms so avoid manual offsets
+    wireframeMesh.position.set(0,0,0);
+    wireframeMesh.rotation.set(0,0,0);
   }
+  saveParamsToActive();
 }
 
 // Environment
@@ -815,6 +1114,40 @@ function animate(){
 rebuild();
 animate();
 
+// --- Raycaster-based object selection and highlight ---
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+renderer.domElement.addEventListener('pointerdown', (event) => {
+  // Only left click
+  if (event.button !== 0) return;
+  const rect = renderer.domElement.getBoundingClientRect();
+  pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  // Collect all meshes for objects
+  const meshes = objects.map(o => o.mesh).filter(Boolean);
+  const intersects = raycaster.intersectObjects(meshes, false);
+  if (intersects.length > 0) {
+    const mesh = intersects[0].object;
+    const rec = objects.find(o => o.mesh === mesh);
+    if (rec) {
+      setActive(rec.id);
+      // Highlight: store original color, set highlight, revert after 0.5s
+      const mat = mesh.material;
+      if (mat && mat.color) {
+        const orig = mat.color.getHex();
+        mat.color.set('#ffe066');
+        setTimeout(() => {
+          // Only revert if still same active object
+          if (objects.find(o => o.mesh === mesh)) {
+            mat.color.set(orig);
+          }
+        }, 500);
+      }
+    }
+  }
+});
+
 // expose rebuild for GUI callbacks
 window.rebuildKnot = rebuild;
 
@@ -837,7 +1170,9 @@ if (panels['Object'].style.display === 'block') {
 import { getAboutHtml } from './ui/about.js';
 import { helpHtml } from './ui/help.js';
 import { showModal } from './ui/modal.js';
-panels['Home'].innerHTML = '<strong>Trefoil Torus Complex Designer</strong><br/>Use the tabs to change environment, object, and view options.';
+// Sadece bir kez obje oluştur, sonra Home UI kur
+ensureInitialObject();
+buildHomeUI();
 // allow language selection and modal viewing
 panels['About'].innerHTML = `
   <div id="aboutLocale">

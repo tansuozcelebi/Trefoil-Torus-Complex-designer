@@ -1,3 +1,14 @@
+# [1.1.0] - 2025-09-16
+### Added
+- Keyboard controls: W/S (posY), A/D (posX), Q/E (posZ), I/K (a), J/L (b), U/O (p), N/M (q). Shift ile hızlı hareket.
+- Keyboard shortcuts table added to README, Help, and Object menu.
+
+### Changed
+- Help and Object menu now show keyboard shortcuts.
+
+### Fixed
+- Only one object is created on first load, all objects are now always clickable.
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
