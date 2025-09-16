@@ -279,6 +279,8 @@ let reflector = null;
 let seaObj = null; // {mesh, setTime, resize}
 let mathObj = null;
 let currentGroundStyle = 'Flat';
+let roomObj = null; // {mesh, dispose}
+let funnelObj = null; // {mesh, dispose}
 // Saved states for reflection toggling
 let _savedMaxDistance = null;
 let _savedCameraFar = null;
@@ -548,7 +550,12 @@ function setGroundStyle(style){
   currentGroundStyle = style;
   // remove additional ground types
   if (seaObj){ scene.remove(seaObj.mesh); seaObj.dispose(); seaObj = null; }
-  if (mathObj){ scene.remove(mathObj.mesh); mathObj.dispose(); mathObj = null; }
+  if (mathObj){
+    if (mathObj.wireframe) scene.remove(mathObj.wireframe);
+    scene.remove(mathObj.mesh); mathObj.dispose(); mathObj = null;
+  }
+  if (roomObj){ scene.remove(roomObj.mesh); roomObj.dispose?.(); roomObj = null; }
+  if (funnelObj){ scene.remove(funnelObj.mesh); funnelObj.dispose?.(); funnelObj = null; }
   if (reflector) { reflector.visible = false; }
   ground.visible = false;
 
@@ -556,10 +563,41 @@ function setGroundStyle(style){
     ground.visible = true;
   } else if (style === 'Sea'){
     seaObj = makeSea(ground.position.y);
+    // enlarge sea coverage to feel like an infinite plane
+    seaObj.mesh.scale.set(8,8,8);
     scene.add(seaObj.mesh);
   } else if (style === 'Math'){
     mathObj = makeMath(ground.position.y);
     scene.add(mathObj.mesh);
+    if (mathObj.wireframe) scene.add(mathObj.wireframe);
+  } else if (style === 'Room'){
+    // Simple 5-faced room using an inverted box (no top)
+    const roomSize = 50;
+    const boxGeo = new THREE.BoxGeometry(roomSize, roomSize, roomSize);
+    const boxMat = new THREE.MeshStandardMaterial({ color: 0x202024, roughness: 0.9, metalness: 0.0, side: THREE.BackSide });
+    const box = new THREE.Mesh(boxGeo, boxMat);
+    box.position.y = roomSize/2 + ground.position.y;
+    box.receiveShadow = true;
+    roomObj = { mesh: box, dispose: () => { boxGeo.dispose(); boxMat.dispose(); } };
+    scene.add(roomObj.mesh);
+    ground.visible = true; // keep ground/checker visible inside room
+  } else if (style === 'Funnel'){
+    // Create a funnel/cone under the object
+    const radiusTop = 0.1;
+    const radiusBottom = 20;
+    const height = 40;
+    const radialSegments = 64;
+    const coneGeo = new THREE.ConeGeometry(radiusBottom, height, radialSegments, 1, true);
+    // rotate so it opens downward and sits under the ground
+    const coneMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1e, roughness: 0.85, metalness: 0.0, side: THREE.DoubleSide });
+    const cone = new THREE.Mesh(coneGeo, coneMat);
+    cone.rotation.x = -Math.PI/2; // point downwards along -Y after rotate
+    cone.position.set(0, ground.position.y - height*0.5, 0);
+    cone.receiveShadow = true;
+    cone.castShadow = false;
+    funnelObj = { mesh: cone, dispose: () => { coneGeo.dispose(); coneMat.dispose(); } };
+    scene.add(funnelObj.mesh);
+    ground.visible = true;
   }
 }
 
@@ -731,6 +769,9 @@ function onWindowResize(){
   renderer.setSize(window.innerWidth, window.innerHeight);
   if (seaUniforms && seaUniforms.iResolution){
     seaUniforms.iResolution.value.set(window.innerWidth, window.innerHeight);
+  }
+  if (seaObj && seaObj.resize){
+    seaObj.resize(window.innerWidth, window.innerHeight);
   }
   if (reflector){
     // update reflector render target size
