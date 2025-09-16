@@ -11,7 +11,7 @@ export function setupGUI(params, rebuild, updateMaterial, toggleReflection, togg
   geomFolder.add(params, 'a', 0.1, 5.0, 0.01).onChange(rebuild);
   geomFolder.add(params, 'b', 0.0, 2.0, 0.01).onChange(rebuild);
   geomFolder.add(params, 'p', 1, 15, 1).onChange(rebuild);
-  geomFolder.add(params, 'q', 1, 5, 1).onChange(rebuild);
+  geomFolder.add(params, 'q', 1, 15, 1).onChange(rebuild);
   geomFolder.add(params, 'tubeRadius', 0.01, 1.0, 0.01).onChange(rebuild);
   geomFolder.add(params, 'uSegments', 16, 2000, 1).onChange(rebuild);
   geomFolder.add(params, 'vSegments', 3, 128, 1).onChange(rebuild);

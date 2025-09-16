@@ -124,6 +124,10 @@ scenePanel.querySelector('#scenePreset').addEventListener('change', (e) => {
   // reflect changes in controls and rebuild
   try { gui.updateDisplay(); } catch(e) {}
   rebuild();
+  // Re-apply reflection constraints if currently enabled
+  if (params && params.showReflection !== undefined) {
+    toggleReflection(params.showReflection);
+  }
 });
 scenePanel.querySelector('#toggleHelpers').addEventListener('change', (e) => {
   const checked = e.target.checked;
@@ -268,6 +272,9 @@ let reflector = null;
 let seaObj = null; // {mesh, setTime, resize}
 let mathObj = null;
 let currentGroundStyle = 'Flat';
+// Saved states for reflection toggling
+let _savedMaxDistance = null;
+let _savedCameraFar = null;
 
 // Controls and GUI state
 const params = {
@@ -411,23 +418,13 @@ function rebuild(){
   applyTransform();
   scene.add(knotMesh);
 
-  // Frame object: position camera to fit the bounding sphere
+  // Keep camera fixed across rebuilds; just position object and aim light
   if (knotGeometry && knotGeometry.boundingSphere){
-    const bs = knotGeometry.boundingSphere;
-    const radius = bs.radius;
-    // place camera along its current direction but far enough
-    const dir = new THREE.Vector3().subVectors(camera.position, new THREE.Vector3(0,0,0)).normalize();
-    const distance = Math.max(radius * 2.5, 3.0);
-    camera.position.copy(dir.multiplyScalar(distance));
-    camera.lookAt(0,0,0);
-  // move object up by 30% of the bounding-sphere diameter
-  const upOffset = radius * 2.0 * 0.3; // 30% of diameter
-  knotMesh.position.set(0, upOffset, 0);
-  if (wireframeMesh) wireframeMesh.position.set(0, upOffset, 0);
-  // aim spot light at the knot so it casts shadows
-  spot.target.position.copy(knotMesh.position);
-  } else {
-    camera.lookAt(0,0,0);
+    const radius = knotGeometry.boundingSphere.radius;
+    const upOffset = radius * 2.0 * 0.3; // raise object above ground proportionally
+    knotMesh.position.set(0, upOffset, 0);
+    if (wireframeMesh) wireframeMesh.position.set(0, upOffset, 0);
+    spot.target.position.copy(knotMesh.position);
   }
 
   // wireframe overlay as child of knotMesh so centers/d transforms match exactly
@@ -495,10 +492,13 @@ function toggleReflection(v){
     if (!reflector){
       const geometry = new THREE.PlaneGeometry(groundSize, groundSize);
       reflector = new Reflector(geometry, {
-        clipBias: 0.003,
-        textureWidth: Math.min(2048, Math.max(512, Math.floor(window.innerWidth * window.devicePixelRatio))),
-        textureHeight: Math.min(2048, Math.max(512, Math.floor(window.innerHeight * window.devicePixelRatio))),
-        color: 0x777777
+        // smaller clip bias reduces self-reflection artifacts
+        clipBias: 0.001,
+        // clamp render target sizes
+        textureWidth: Math.min(1024, Math.max(512, Math.floor(window.innerWidth * window.devicePixelRatio))),
+        textureHeight: Math.min(1024, Math.max(512, Math.floor(window.innerHeight * window.devicePixelRatio))),
+        color: 0x777777,
+        recursion: 0
       });
       reflector.rotation.x = -Math.PI / 2;
       reflector.position.y = ground.position.y + 0.001;
@@ -507,11 +507,22 @@ function toggleReflection(v){
       reflector.material.opacity = params.reflectorOpacity;
       scene.add(reflector);
     }
+    // while reflection is active, limit far distance and orbit range to avoid far-haze in the reflection
+    if (_savedCameraFar === null) _savedCameraFar = camera.far;
+    camera.far = Math.min(camera.far, 300);
+    camera.updateProjectionMatrix();
+    if (controls){
+      if (_savedMaxDistance === null) _savedMaxDistance = controls.maxDistance ?? null;
+      controls.maxDistance = Math.min(50, _savedMaxDistance || 50);
+    }
     // keep ground visible and just show the reflector over it
     ground.visible = true;
     if (reflector) reflector.visible = true;
   } else {
     if (reflector) reflector.visible = false;
+    // restore camera/controls distances
+    if (_savedCameraFar !== null){ camera.far = _savedCameraFar; camera.updateProjectionMatrix(); _savedCameraFar = null; }
+    if (controls && _savedMaxDistance !== null){ controls.maxDistance = _savedMaxDistance; _savedMaxDistance = null; }
     ground.visible = true;
   }
 }
@@ -716,7 +727,10 @@ function onWindowResize(){
   }
   if (reflector){
     // update reflector render target size
-    reflector.getRenderTarget().setSize(window.innerWidth * window.devicePixelRatio, window.innerHeight * window.devicePixelRatio);
+    const w = Math.min(1024, Math.max(512, Math.floor(window.innerWidth * window.devicePixelRatio)));
+    const h = Math.min(1024, Math.max(512, Math.floor(window.innerHeight * window.devicePixelRatio)));
+    const rt = typeof reflector.getRenderTarget === 'function' ? reflector.getRenderTarget() : reflector.renderTarget;
+    if (rt && typeof rt.setSize === 'function') rt.setSize(w, h);
   }
 }
 
