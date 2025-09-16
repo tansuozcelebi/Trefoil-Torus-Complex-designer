@@ -167,6 +167,8 @@ function updateStats(){
 // top toolbar for ground style (moved into Environment panel)
 const toolbar = document.createElement('div');
 toolbar.style.display = 'flex';
+toolbar.style.flexDirection = 'column';
+toolbar.style.alignItems = 'stretch';
 toolbar.style.gap = '8px';
 envPanel.appendChild(toolbar);
 
@@ -179,6 +181,7 @@ function makeBtn(label, onClick){
   b.style.cursor = 'pointer';
   b.style.background = '#222';
   b.style.color = '#fff';
+  b.style.width = '100%';
   b.addEventListener('click', onClick);
   return b;
 }
@@ -186,9 +189,13 @@ function makeBtn(label, onClick){
 const flatBtn = makeBtn('Flat', () => setGroundStyle('Flat'));
 const seaBtn = makeBtn('Sea Wave', () => setGroundStyle('Sea'));
 const mathBtn = makeBtn('Mathematical surface', () => setGroundStyle('Math'));
+const roomBtn = makeBtn('Room', () => setGroundStyle('Room'));
+const funnelBtn = makeBtn('Funnel', () => setGroundStyle('Funnel'));
 toolbar.appendChild(flatBtn);
 toolbar.appendChild(seaBtn);
 toolbar.appendChild(mathBtn);
+toolbar.appendChild(roomBtn);
+toolbar.appendChild(funnelBtn);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
