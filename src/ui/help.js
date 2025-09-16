@@ -1,5 +1,5 @@
 export const helpHtml = `
-<h3>Quick Help</h3>
+<h3>Quick Help Hızlı yardım konuları </h3>
 <ul>
   <li>Use the <strong>Object</strong> tab to change knot parameters and material properties.</li>
   <li>Use the <strong>Environment</strong> tab to switch ground styles (Flat / Sea Wave / Mathematical surface).</li>

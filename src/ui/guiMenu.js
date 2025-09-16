@@ -71,23 +71,7 @@ export function setupGUI(params, rebuild, updateMaterial, toggleReflection, togg
   sixFolder.add(params, 'rotZ', -180, 180, 0.1).name('rotZ').onChange(() => { saveParams && saveParams(); applyTransform(); });
   sixFolder.open();
 
-  // Keyboard shortcuts info
-  const kbDiv = document.createElement('div');
-  kbDiv.style.margin = '16px 0 0 0';
-  kbDiv.innerHTML = `
-    <strong>Keyboard Shortcuts</strong><br/>
-    <table style="min-width:220px;font-size:13px;margin-top:4px">
-      <tr><td>W/S</td><td>posY up/down</td></tr>
-      <tr><td>A/D</td><td>posX left/right</td></tr>
-      <tr><td>Q/E</td><td>posZ forward/back</td></tr>
-      <tr><td>I/K</td><td>a increase/decrease</td></tr>
-      <tr><td>J/L</td><td>b decrease/increase</td></tr>
-      <tr><td>U/O</td><td>p decrease/increase</td></tr>
-      <tr><td>N/M</td><td>q decrease/increase</td></tr>
-    </table>
-    <span style="font-size:12px;opacity:0.7">Hold <b>Shift</b> for larger steps (position).</span>
-  `;
-  gui.domElement.appendChild(kbDiv);
+
 
   return { gui, geomFolder, matFolder, lightsFolder, viewFolder, sixFolder };
 }

@@ -5,7 +5,7 @@ window.addEventListener('keydown', (e) => {
   if (!rec) return;
   let changed = false;
   // Pozisyon kontrolleri (WASDQE)
-  const step = e.shiftKey ? 0.2 : 0.05;
+  const step = e.shiftKey ? 0.4 : 0.1; // 2 kat hız
   switch (e.key.toLowerCase()) {
     case 'w': params.posY += step; changed = true; break;
     case 's': params.posY -= step; changed = true; break;
@@ -650,13 +650,9 @@ function createMaterial(){
 }
 
 
-function rebuild(){
-  // Tüm objelerin mesh ve wireframe'lerini sahneden kaldır
-  for (const o of objects) {
-    if (o.mesh && o.mesh.parent) o.mesh.parent.remove(o.mesh);
-    if (o.wireframe && o.wireframe.parent) o.wireframe.parent.remove(o.wireframe);
-  }
 
+function rebuild(){
+  // Sadece aktif objenin mesh/wireframe'ini güncelle
   // LOD: reduce uSegments on small screens
   const isMobile = window.innerWidth < 800 || window.devicePixelRatio > 2.5;
   const uSeg = isMobile ? Math.max(64, Math.round(params.uSegments * 0.25)) : params.uSegments;
@@ -860,15 +856,24 @@ function setGroundStyle(style){
 
   if (style === 'Flat'){
     ground.visible = true;
+    ground.receiveShadow = true;
+    shadowReceiver.visible = true;
+    if (!scene.children.includes(shadowReceiver)) scene.add(shadowReceiver);
   } else if (style === 'Sea'){
     seaObj = makeSea(ground.position.y);
     // enlarge sea coverage to feel like an infinite plane
     seaObj.mesh.scale.set(8,8,8);
     scene.add(seaObj.mesh);
+    shadowReceiver.visible = true;
+    if (!scene.children.includes(shadowReceiver)) scene.add(shadowReceiver);
   } else if (style === 'Math'){
     mathObj = makeMath(ground.position.y);
     scene.add(mathObj.mesh);
     if (mathObj.wireframe) scene.add(mathObj.wireframe);
+    // Sadece matematiksel yüzey gölge alacak, planar shadowReceiver gizlenir
+    shadowReceiver.visible = false;
+    ground.visible = false;
+    if (mathObj.mesh) mathObj.mesh.receiveShadow = true;
   } else if (style === 'Room'){
     // Simple 5-faced room using an inverted box (no top)
     const roomSize = 50;
