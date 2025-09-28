@@ -1,3 +1,30 @@
+# [1.1.2] - 2025-09-28
+### Added
+- Glow (hover/press) visual feedback for 6-axis gizmo buttons (desktop + touch).
+- Draggable gizmo panel with persistent position (localStorage) supporting mouse & touch.
+
+### Changed
+- Gizmo layout now includes a drag bar; panel border radii adjusted.
+
+# [1.1.3] - 2025-09-28
+### Added
+- Main navigation tabs now have glow hover/active effects.
+- New objects spawn with a random curated palette (material + wireframe) and enforced metallic material.
+
+### Changed
+- Default new object material overrides to Metallic (metalness 0.9 / roughness 0.22) regardless of current global params.
+
+# [1.1.1] - 2025-09-28
+### Added
+- Mobile / tablet 6-axis touch transform gizmo (X/Y/Z translate + RX/RY/RZ rotate) with press-and-hold repeat. Auto appears on touch devices.
+- README section for Mobile / Tablet Touch Transform Gizmo.
+
+### Fixed
+- Minor UI layering: touch gizmo has high z-index and does not block nav panels.
+
+### Changed
+- Documentation updated to mention touch support.
+
 # [1.1.0] - 2025-09-16
 ### Added
 - Keyboard controls: W/S (posY), A/D (posX), Q/E (posZ), I/K (a), J/L (b), U/O (p), N/M (q). Shift ile hızlı hareket.

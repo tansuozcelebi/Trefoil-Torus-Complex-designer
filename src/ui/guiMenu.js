@@ -2,12 +2,12 @@
 // Contains the GUI menu setup for the app
 import { GUI } from 'dat.gui';
 
-export function setupGUI(params, rebuild, updateMaterial, toggleReflection, toggleWireframe, toggleGrid, applyTransform, knotMaterial, wireframeMesh, spot, ambient, reflector, saveParams) {
+export function setupGUI(params, rebuild, updateMaterial, toggleReflection, toggleWireframe, applyTransform, knotMaterial, wireframeMesh, spot, ambient, reflector, saveParams) {
   const gui = new GUI({ width: 320 });
 
   // Geometry folder
   const geomFolder = gui.addFolder('Geometry');
-  geomFolder.add(params, 'objectType', ['Trefoil', 'Septafoil']).name('Object Type').onChange(() => { saveParams && saveParams(); rebuild(); });
+  geomFolder.add(params, 'objectType', ['Trefoil', 'Septafoil', 'BaskınFoil']).name('Object Type').onChange(() => { saveParams && saveParams(); rebuild(); });
   geomFolder.add(params, 'a', 0.1, 5.0, 0.01).onChange(() => { saveParams && saveParams(); rebuild(); });
   geomFolder.add(params, 'b', 0.0, 2.0, 0.01).onChange(() => { saveParams && saveParams(); rebuild(); });
   geomFolder.add(params, 'p', 1, 15, 1).onChange(() => { saveParams && saveParams(); rebuild(); });
@@ -15,6 +15,9 @@ export function setupGUI(params, rebuild, updateMaterial, toggleReflection, togg
   geomFolder.add(params, 'tubeRadius', 0.01, 1.0, 0.01).onChange(() => { saveParams && saveParams(); rebuild(); });
   geomFolder.add(params, 'uSegments', 16, 2000, 1).onChange(() => { saveParams && saveParams(); rebuild(); });
   geomFolder.add(params, 'vSegments', 3, 128, 1).onChange(() => { saveParams && saveParams(); rebuild(); });
+  // New magnitude for BaskınFoil / variable width ribbon amplitude
+  if (params.magnitude === undefined) params.magnitude = 1.0;
+  geomFolder.add(params, 'magnitude', 0.0, 5.0, 0.01).name('Magnitude').onChange(() => { saveParams && saveParams(); rebuild(); });
   geomFolder.open();
 
   // Material folder
@@ -45,12 +48,9 @@ export function setupGUI(params, rebuild, updateMaterial, toggleReflection, togg
   // View folder
   const viewFolder = gui.addFolder('View');
   viewFolder.add(params, 'useWireframe').onChange((v) => { saveParams && saveParams(); toggleWireframe(v); });
-  viewFolder.add(params, 'showGrid').onChange((v) => { saveParams && saveParams(); toggleGrid(v); });
-  // autoRotate/rotationSpeed handlers are (re)bound in main to sync OrbitControls; still save here on change
   viewFolder.add(params, 'autoRotate').onChange(() => { saveParams && saveParams(); });
   viewFolder.add(params, 'rotationSpeed', 0, 2, 0.01).onChange(() => { saveParams && saveParams(); });
   viewFolder.open();
-
 
   // Mathematical Surface folder
   const mathFolder = gui.addFolder('Math Surface');
@@ -59,7 +59,6 @@ export function setupGUI(params, rebuild, updateMaterial, toggleReflection, togg
     saveParams && saveParams();
   });
   mathFolder.open();
-
 
   // 6-axis control folder
   const sixFolder = gui.addFolder('6-Axis Controls XYZABC');
@@ -70,8 +69,6 @@ export function setupGUI(params, rebuild, updateMaterial, toggleReflection, togg
   sixFolder.add(params, 'rotY', -180, 180, 0.1).name('rotY').onChange(() => { saveParams && saveParams(); applyTransform(); });
   sixFolder.add(params, 'rotZ', -180, 180, 0.1).name('rotZ').onChange(() => { saveParams && saveParams(); applyTransform(); });
   sixFolder.open();
-
-
 
   return { gui, geomFolder, matFolder, lightsFolder, viewFolder, sixFolder };
 }

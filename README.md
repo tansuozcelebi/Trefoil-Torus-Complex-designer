@@ -40,6 +40,25 @@ Features:
 
 Hold Shift for larger steps (position).
 
+## Mobile / Tablet Touch Transform Gizmo
+
+Dokunmatik cihazlarda (telefon / tablet) sağ altta otomatik çıkan 6-eksen (XYZ + RX/RY/RZ) transform paneli ile aktif objeyi klavye olmadan konumlandırabilir ve döndürebilirsiniz.
+
+Buttons:
+
+| Button | Effect              |
+|--------|---------------------|
+| X+/X-  | Move +/− X (0.1)    |
+| Y+/Y-  | Move +/− Y (0.1)    |
+| Z+/Z-  | Move +/− Z (0.1)    |
+| RX+/RX-| Rotate X ±5°        |
+| RY+/RY-| Rotate Y ±5°        |
+| RZ+/RZ-| Rotate Z ±5°        |
+
+Basılı tutunca tekrar eder (press & hold repeat). Gizmo Hide ile paneli gizleyebilir, tekrar göstermek için aynı düğmeye (Gizmo Show) dokunabilirsiniz.
+
+Bu panel sadece dokunmatik destekli cihazları otomatik algılayınca yüklenir.
+
 Notes:
 - To run:
 

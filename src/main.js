@@ -93,6 +93,16 @@ activeInfo.style.color = '#3fa7ff'; // blue
 activeInfo.style.fontSize = '12px';
 navBar.appendChild(activeInfo);
 
+// add version display
+const versionInfo = document.createElement('div');
+versionInfo.textContent = 'v1.1.3';
+versionInfo.style.marginLeft = 'auto';
+versionInfo.style.fontSize = '10px';
+versionInfo.style.color = '#7da6cc';
+versionInfo.style.fontWeight = '500';
+versionInfo.style.textShadow = '0 0 4px rgba(0,180,255,0.35)';
+navBar.appendChild(versionInfo);
+
 function makeTab(label){
   const t = document.createElement('button');
   t.textContent = label;
@@ -102,8 +112,22 @@ function makeTab(label){
   t.style.color = '#fff';
   t.style.cursor = 'pointer';
   t.style.borderRadius = '4px';
-  t.addEventListener('mouseenter', () => t.style.background = 'rgba(255,255,255,0.04)');
-  t.addEventListener('mouseleave', () => t.style.background = 'transparent');
+  t.style.position = 'relative';
+  t.style.transition = 'background 0.25s ease, box-shadow 0.3s ease, transform 0.18s ease';
+  t.style.boxShadow = '0 0 0px rgba(0,180,255,0)';
+  t.addEventListener('mouseenter', () => {
+    t.style.background = 'rgba(35,120,200,0.18)';
+    t.style.boxShadow = '0 0 8px rgba(0,170,255,0.55), 0 0 16px rgba(0,120,255,0.35)';
+  });
+  t.addEventListener('mouseleave', () => {
+    if (!t.dataset.active){
+      t.style.background = 'transparent';
+      t.style.boxShadow = '0 0 0px rgba(0,180,255,0)';
+      t.style.transform = 'none';
+    }
+  });
+  t.addEventListener('mousedown', () => { t.style.transform = 'translateY(1px) scale(0.97)'; });
+  t.addEventListener('mouseup', () => { t.style.transform = 'none'; });
   return t;
 }
 
@@ -142,6 +166,19 @@ function showTab(name){
   if (name === 'Object' && typeof window.showControlsGUI === 'function') {
     window.showControlsGUI();
   }
+  // update active tab glow
+  Array.from(navBar.querySelectorAll('button')).forEach(b => {
+    if (b.textContent === name){
+      b.dataset.active = '1';
+      b.style.background = 'rgba(35,120,200,0.28)';
+      b.style.boxShadow = '0 0 10px rgba(0,200,255,0.75), 0 0 24px rgba(0,140,255,0.45)';
+    } else {
+      delete b.dataset.active;
+      b.style.background = 'transparent';
+      b.style.boxShadow = '0 0 0px rgba(0,0,0,0)';
+      b.style.transform = 'none';
+    }
+  });
 }
 
 // default open Home
@@ -189,7 +226,8 @@ scenePanel.querySelector('#scenePreset').addEventListener('change', (e) => {
 scenePanel.querySelector('#toggleHelpers').addEventListener('change', (e) => {
   const checked = e.target.checked;
   // toggle grid and shadow receiver as an example
-  grid.visible = checked || params.showGrid;
+  // grid now only follows helpers checkbox (showGrid removed)
+  grid.visible = checked;
   shadowReceiver.visible = checked;
 });
 
@@ -352,6 +390,7 @@ const params = {
   tubeRadius: 0.25,
   uSegments: 400,
   vSegments: 32,
+  magnitude: 1.0, // BaskınFoil genislik/genlik parametresi
   materialType: 'Metallic',
   metalness: 0.8,
   roughness: 0.25,
@@ -359,7 +398,6 @@ const params = {
   ior: 1.45,
   useTransmission: false,
   useWireframe: true,
-  showGrid: false,
   showReflection: false,
   reflectorOpacity: 0.6,
   fresnel: true,
@@ -408,6 +446,22 @@ function setActive(id){
 
 function addObjectFromPreset(preset){
   const id = nextId++;
+  // curated pleasant palette (materialColor, wireframeColor)
+  const palette = [
+    ['#5fb3ff', '#0a2233'], // bright cyan blue
+    ['#ffa646', '#331a00'], // warm orange
+    ['#9d7bff', '#1c1433'], // soft violet
+    ['#6cf2b7', '#062d20'], // mint green
+    ['#ff5f87', '#33000f'], // pinkish red
+    ['#ffd76a', '#332600'], // golden yellow
+    ['#5ee3ff', '#012b33'], // aqua
+    ['#b8ff72', '#1e3300'], // lime soft
+    ['#ff9de3', '#330024'], // pastel magenta
+    ['#9fffcf', '#003328']  // seafoam
+  ];
+  const pick = palette[Math.floor(Math.random()*palette.length)];
+  const matColor = pick[0];
+  const wireColor = pick[1];
   const rec = {
     id,
     name: preset.name || `Object ${id}`,
@@ -422,16 +476,17 @@ function addObjectFromPreset(preset){
       tubeRadius: preset.params?.tubeRadius ?? params.tubeRadius,
       uSegments: preset.params?.uSegments ?? params.uSegments,
       vSegments: preset.params?.vSegments ?? params.vSegments,
-      // material defaults
-      materialType: params.materialType,
-      metalness: params.metalness,
-      roughness: params.roughness,
-      opacity: params.opacity,
+      magnitude: preset.params?.magnitude ?? params.magnitude,
+      // randomized metallic material defaults
+      materialType: 'Metallic',
+      metalness: 0.9,
+      roughness: 0.22,
+      opacity: 1.0,
       ior: params.ior,
-      useTransmission: params.useTransmission,
+      useTransmission: false,
       fresnel: params.fresnel,
-      materialColor: params.materialColor,
-      wireframeColor: params.wireframeColor,
+      materialColor: matColor,
+      wireframeColor: wireColor,
       // view
       useWireframe: params.useWireframe,
       posX: 0, posY: 0, posZ: 0, rotX: 0, rotY: 0, rotZ: 0
@@ -470,6 +525,7 @@ function saveParamsToActive(){
     objectType: params.objectType,
     a: params.a, b: params.b, p: params.p, q: params.q,
     tubeRadius: params.tubeRadius, uSegments: params.uSegments, vSegments: params.vSegments,
+  magnitude: params.magnitude,
     materialType: params.materialType, metalness: params.metalness, roughness: params.roughness,
     opacity: params.opacity, ior: params.ior, useTransmission: params.useTransmission,
     fresnel: params.fresnel, materialColor: params.materialColor, wireframeColor: params.wireframeColor,
@@ -490,10 +546,55 @@ function createPresetThumbnail(preset){
       const cam = new THREE.PerspectiveCamera(45, w/h, 0.1, 100);
       cam.position.set(3, 2, 4);
       cam.lookAt(0,0,0);
-      const curve = (preset.type === 'Septafoil')
-        ? new SeptafoilCurve(preset.params?.a ?? 2, preset.params?.b ?? 1, preset.params?.p ?? 2, preset.params?.q ?? 3)
-        : new TrefoilCurve(preset.params?.a ?? 2, preset.params?.b ?? 1, preset.params?.p ?? 2, preset.params?.q ?? 3);
-      const geo = new THREE.TubeGeometry(curve, 200, preset.params?.tubeRadius ?? 0.25, 16, true);
+      let geo;
+      if (preset.type === 'BaskınFoil') {
+        // Basit ribbon geometry thumbnail (düşük segment)
+        const a = preset.params?.a ?? 2;
+        const b = preset.params?.b ?? 1;
+        const p = preset.params?.p ?? 2;
+        const q = preset.params?.q ?? 3;
+        const mag = preset.params?.magnitude ?? 1.0;
+        const segs = 180;
+        const halfW = 0.15 * mag;
+        const positions = new Float32Array(segs * 2 * 3);
+        const indices = [];
+        function curvePos(t){
+          const ct = Math.cos(t), st = Math.sin(t);
+          const x = (a + b * Math.cos(q * t)) * Math.cos(p * t);
+          const y = (a + b * Math.cos(q * t)) * Math.sin(p * t);
+          const z = b * Math.sin(q * t);
+          return new THREE.Vector3(x, z, y); // z-y swap for nicer orientation
+        }
+        const tangents = [];
+        const pts = [];
+        for(let i=0;i<segs;i++){ const t = (i/segs)*Math.PI*2; pts.push(curvePos(t)); }
+        for(let i=0;i<segs;i++){ const p0 = pts[i]; const p1 = pts[(i+1)%segs]; tangents.push(new THREE.Vector3().subVectors(p1,p0).normalize()); }
+        for(let i=0;i<segs;i++){
+          const pnt = pts[i];
+          const tan = tangents[i];
+            // simple normal approximation
+          const up = new THREE.Vector3(0,1,0);
+          let side = new THREE.Vector3().crossVectors(up, tan).normalize();
+          if (side.lengthSq() < 1e-5) side = new THREE.Vector3(1,0,0);
+          const left = new THREE.Vector3().addVectors(pnt, side.clone().multiplyScalar(-halfW));
+          const right = new THREE.Vector3().addVectors(pnt, side.clone().multiplyScalar(halfW));
+          positions.set([left.x,left.y,left.z], i*6 + 0);
+          positions.set([right.x,right.y,right.z], i*6 + 3);
+          const i2 = (i+1)%segs;
+          indices.push(i*2, i*2+1, i2*2);
+          indices.push(i*2+1, i2*2+1, i2*2);
+        }
+        const g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        g.setIndex(indices);
+        g.computeVertexNormals();
+        geo = g;
+      } else {
+        const curve = (preset.type === 'Septafoil')
+          ? new SeptafoilCurve(preset.params?.a ?? 2, preset.params?.b ?? 1, preset.params?.p ?? 2, preset.params?.q ?? 3)
+          : new TrefoilCurve(preset.params?.a ?? 2, preset.params?.b ?? 1, preset.params?.p ?? 2, preset.params?.q ?? 3);
+        geo = new THREE.TubeGeometry(curve, 200, preset.params?.tubeRadius ?? 0.25, 16, true);
+      }
       if (geo.center) geo.center();
       const mat = new THREE.MeshBasicMaterial({ color: 0x9fbfff, wireframe: false });
       const mesh = new THREE.Mesh(geo, mat);
@@ -556,6 +657,7 @@ function buildHomeUI(){
     const rec = getActiveRecord();
     if (!rec) return;
     const newPreset = { key: 'user-' + Date.now(), name, desc: '', type: rec.params.objectType, params: { a: rec.params.a, b: rec.params.b, p: rec.params.p, q: rec.params.q, tubeRadius: rec.params.tubeRadius, uSegments: rec.params.uSegments, vSegments: rec.params.vSegments } };
+      if (rec.params.magnitude !== undefined) newPreset.params.magnitude = rec.params.magnitude;
     const arr = loadUserPresets(); arr.push(newPreset); saveUserPresets(arr);
     buildHomeUI();
   });
@@ -601,7 +703,7 @@ let knotGeometry = null;
 let knotMaterial = null;
 
 // Setup GUI menu (objectType at the top)
-const { gui, viewFolder } = setupGUI(params, rebuild, updateMaterial, toggleReflection, toggleWireframe, toggleGrid, applyTransform, knotMaterial, wireframeMesh, spot, ambient, reflector, saveParamsToActive);
+const { gui, viewFolder } = setupGUI(params, rebuild, updateMaterial, toggleReflection, toggleWireframe, applyTransform, knotMaterial, wireframeMesh, spot, ambient, reflector, saveParamsToActive);
 
 // Export folder (if needed)
 // const exportFolder = gui.addFolder('Export');
@@ -676,12 +778,56 @@ function rebuild(){
 
   // choose curve implementation based on user selection
   let curve;
-  if (params.objectType === 'Septafoil'){
-    curve = new SeptafoilCurve(params.a, params.b, params.p, params.q);
+  let isFoil = false;
+  if (params.objectType === 'BaskınFoil') {
+    isFoil = true;
+    // Create variable-width ribbon along torus-like curve
+    const segs = uSeg;
+    const halfWBase = 0.2 * (params.magnitude ?? 1.0);
+    const positions = new Float32Array(segs * 2 * 3);
+    const indices = [];
+    function curvePos(t){
+      const a = params.a, b = params.b, p = params.p, q = params.q;
+      const x = (a + b * Math.cos(q * t)) * Math.cos(p * t);
+      const y = (a + b * Math.cos(q * t)) * Math.sin(p * t);
+      const z = b * Math.sin(q * t);
+      return new THREE.Vector3(x, z, y); // y<->z değişikliği görsel oryantasyon için
+    }
+    const pts = []; const tangents = [];
+    for(let i=0;i<segs;i++){ const t = (i/segs)*Math.PI*2; pts.push(curvePos(t)); }
+    for(let i=0;i<segs;i++){ const p0 = pts[i]; const p1 = pts[(i+1)%segs]; tangents.push(new THREE.Vector3().subVectors(p1,p0).normalize()); }
+    for(let i=0;i<segs;i++){
+      const t = (i/segs);
+      // width modulation sin tabanlı - magnitude etkisi
+      const widthMod = (Math.sin(t*Math.PI*2*params.q) * 0.5 + 0.5); // 0..1
+      const halfW = halfWBase * (0.25 + 0.75*widthMod);
+      const pnt = pts[i];
+      const tan = tangents[i];
+      let up = new THREE.Vector3(0,1,0);
+      // up eğer tan'a çok paralel ise farklı eksen seç
+      if (Math.abs(tan.dot(up)) > 0.95) up = new THREE.Vector3(1,0,0);
+      let side = new THREE.Vector3().crossVectors(up, tan).normalize();
+      if (side.lengthSq() < 1e-5) side = new THREE.Vector3(1,0,0);
+      const left = new THREE.Vector3().addVectors(pnt, side.clone().multiplyScalar(-halfW));
+      const right = new THREE.Vector3().addVectors(pnt, side.clone().multiplyScalar(halfW));
+      positions.set([left.x,left.y,left.z], i*6 + 0);
+      positions.set([right.x,right.y,right.z], i*6 + 3);
+      const i2 = (i+1)%segs;
+      indices.push(i*2, i*2+1, i2*2);
+      indices.push(i*2+1, i2*2+1, i2*2);
+    }
+    knotGeometry = new THREE.BufferGeometry();
+    knotGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    knotGeometry.setIndex(indices);
+    knotGeometry.computeVertexNormals();
   } else {
-    curve = new TrefoilCurve(params.a, params.b, params.p, params.q);
+    if (params.objectType === 'Septafoil'){
+      curve = new SeptafoilCurve(params.a, params.b, params.p, params.q);
+    } else {
+      curve = new TrefoilCurve(params.a, params.b, params.p, params.q);
+    }
+    knotGeometry = new THREE.TubeGeometry(curve, uSeg, params.tubeRadius, params.vSegments, true);
   }
-  knotGeometry = new THREE.TubeGeometry(curve, uSeg, params.tubeRadius, params.vSegments, true);
   // center geometry so the object is centered at origin
   if (knotGeometry && typeof knotGeometry.center === 'function'){
     knotGeometry.center();
@@ -722,13 +868,16 @@ function rebuild(){
   }
 
   // wireframe overlay as child of knotMesh so centers/d transforms match exactly
-  const geo2 = new THREE.WireframeGeometry(knotGeometry);
-  const mat2 = new THREE.LineBasicMaterial({ color: new THREE.Color(params.wireframeColor), transparent: true, opacity: 0.6 });
-  wireframeMesh = new THREE.LineSegments(geo2, mat2);
-  wireframeMesh.renderOrder = 1;
-  // add to knot mesh so it inherits the same local transform and center
-  knotMesh.add(wireframeMesh);
-  wireframeMesh.visible = params.useWireframe;
+  if (!isFoil) { // foil için wireframe çok karmaşık görünebilir, isteğe bağlı ileride eklenir
+    const geo2 = new THREE.WireframeGeometry(knotGeometry);
+    const mat2 = new THREE.LineBasicMaterial({ color: new THREE.Color(params.wireframeColor), transparent: true, opacity: 0.6 });
+    wireframeMesh = new THREE.LineSegments(geo2, mat2);
+    wireframeMesh.renderOrder = 1;
+    knotMesh.add(wireframeMesh);
+    wireframeMesh.visible = params.useWireframe;
+  } else {
+    wireframeMesh = null;
+  }
 
   toggleWireframe(params.useWireframe);
   // update vertex/face stats
@@ -785,10 +934,8 @@ function toggleWireframe(v){
 const grid = new THREE.GridHelper(20, 40, 0x222222, 0x0a0a0a);
 grid.position.y = -2.499;
 scene.add(grid);
-// initialize grid visibility from params (default off)
-grid.visible = params.showGrid;
-
-function toggleGrid(v){ grid.visible = v; }
+// initialize grid visibility (helpers off by default)
+grid.visible = false;
 
 
 function toggleReflection(v){
@@ -1115,8 +1262,9 @@ function animate(){
   updateStats();
 }
 
-// initial build
-rebuild();
+// İlk obje kaydı oluşturulmadan rebuild yapılıyordu; bu da 'kontrol edilemeyen gizli obje' hissi veriyordu.
+// Önce ensureInitialObject() ile Object 1'i yaratıyoruz; addObjectFromPreset zaten rebuild çağırıyor.
+ensureInitialObject();
 animate();
 
 // --- Raycaster-based object selection and highlight ---
@@ -1175,14 +1323,16 @@ if (panels['Object'].style.display === 'block') {
 import { getAboutHtml } from './ui/about.js';
 import { helpHtml } from './ui/help.js';
 import { showModal } from './ui/modal.js';
-// Sadece bir kez obje oluştur, sonra Home UI kur
-ensureInitialObject();
+// Home UI'yi kur (obje zaten oluşturuldu)
 buildHomeUI();
 // allow language selection and modal viewing
 panels['About'].innerHTML = `
   <div id="aboutLocale">
     <label>Language: </label>
     <select id="aboutLang"><option value="en">English</option><option value="tr">Türkçe</option></select>
+  </div>
+  <div style="margin-top:8px; font-size:11px; color:#7da6cc;">
+    <strong>Version:</strong> 1.1.3 — ${new Date().toISOString().split('T')[0]}
   </div>
   <div id="aboutContent" style="margin-top:10px">${getAboutHtml('en')}</div>
   <div style="margin-top:10px"><a href="#" id="aboutMore">More on knots</a></div>
@@ -1220,4 +1370,199 @@ window.addEventListener('pointerdown', (e) => {
     Object.keys(panels).forEach(k => panels[k].style.display = 'none');
   }
 });
+
+// --- Touch 6-axis Transform Gizmo (Mobile/Tablet) ---
+function isTouchDevice(){
+  return ('ontouchstart' in window) || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0;
+}
+
+let gizmoRoot = null;
+let gizmoVisible = true;
+const moveStepBase = 0.1;
+const rotStep = 5; // degrees
+let repeatTimer = null;
+
+function applyAndSaveTransform(){
+  saveParamsToActive();
+  applyTransform();
+  try { gui.updateDisplay(); } catch(e){}
+}
+
+function buildTouchGizmo(){
+  if (gizmoRoot) return;
+  gizmoRoot = document.createElement('div');
+  gizmoRoot.style.position = 'fixed';
+  // restore saved position if any
+  const savedPos = JSON.parse(localStorage.getItem('tc_gizmo_pos')||'null');
+  if (savedPos && typeof savedPos.x==='number' && typeof savedPos.y==='number'){
+    gizmoRoot.style.left = savedPos.x + 'px';
+    gizmoRoot.style.top = savedPos.y + 'px';
+  } else {
+    gizmoRoot.style.right = '12px';
+    gizmoRoot.style.bottom = '12px';
+  }
+  gizmoRoot.style.zIndex = '1500';
+  gizmoRoot.style.display = 'flex';
+  gizmoRoot.style.flexDirection = 'column';
+  gizmoRoot.style.gap = '6px';
+  gizmoRoot.style.pointerEvents = 'auto';
+
+  // DRAG HANDLE
+  const dragBar = document.createElement('div');
+  dragBar.textContent = '⇕ Gizmo';
+  dragBar.style.cursor = 'move';
+  dragBar.style.userSelect = 'none';
+  dragBar.style.fontSize = '11px';
+  dragBar.style.letterSpacing = '0.5px';
+  dragBar.style.padding = '4px 10px 4px 10px';
+  dragBar.style.alignSelf = 'stretch';
+  dragBar.style.background = 'linear-gradient(90deg,#20262e,#1a1f25)';
+  dragBar.style.border = '1px solid rgba(255,255,255,0.08)';
+  dragBar.style.borderRadius = '10px 10px 0 0';
+  dragBar.style.color = '#9fd6ff';
+  dragBar.style.fontWeight = '600';
+  dragBar.style.textShadow = '0 0 6px rgba(0,180,255,0.55)';
+  dragBar.style.backdropFilter = 'blur(6px)';
+
+  let dragState = null; // {ox, oy, sx, sy, hadExplicit}
+  const startDrag = (clientX, clientY) => {
+    const rect = gizmoRoot.getBoundingClientRect();
+    dragState = { ox: clientX, oy: clientY, sx: rect.left, sy: rect.top, hadExplicit: gizmoRoot.style.left!=='' || gizmoRoot.style.top!=='' };
+    // if anchored by right/bottom, convert to left/top
+    if (!dragState.hadExplicit){
+      gizmoRoot.style.left = rect.left + 'px';
+      gizmoRoot.style.top = rect.top + 'px';
+      gizmoRoot.style.right = 'auto';
+      gizmoRoot.style.bottom = 'auto';
+    }
+    document.addEventListener('mousemove', onDragMove);
+    document.addEventListener('mouseup', endDrag);
+    document.addEventListener('touchmove', onDragMove, { passive:false });
+    document.addEventListener('touchend', endDrag);
+  };
+  const onDragMove = (e) => {
+    if (!dragState) return;
+    let cx, cy;
+    if (e.touches && e.touches.length){ cx = e.touches[0].clientX; cy = e.touches[0].clientY; e.preventDefault(); }
+    else { cx = e.clientX; cy = e.clientY; }
+    const dx = cx - dragState.ox; const dy = cy - dragState.oy;
+    let nx = dragState.sx + dx; let ny = dragState.sy + dy;
+    // clamp inside viewport
+    const maxX = window.innerWidth - 40; const maxY = window.innerHeight - 40;
+    nx = Math.min(Math.max(-5, nx), maxX);
+    ny = Math.min(Math.max(-5, ny), maxY);
+    gizmoRoot.style.left = nx + 'px';
+    gizmoRoot.style.top = ny + 'px';
+  };
+  const endDrag = () => {
+    if (dragState){
+      // persist
+      const rect = gizmoRoot.getBoundingClientRect();
+      localStorage.setItem('tc_gizmo_pos', JSON.stringify({ x: rect.left, y: rect.top }));
+    }
+    dragState = null;
+    document.removeEventListener('mousemove', onDragMove);
+    document.removeEventListener('mouseup', endDrag);
+    document.removeEventListener('touchmove', onDragMove);
+    document.removeEventListener('touchend', endDrag);
+  };
+  dragBar.addEventListener('mousedown', (e)=>{ startDrag(e.clientX, e.clientY); });
+  dragBar.addEventListener('touchstart', (e)=>{ if (e.touches && e.touches.length){ startDrag(e.touches[0].clientX, e.touches[0].clientY); } });
+
+  const panel = document.createElement('div');
+  panel.style.display = 'grid';
+  panel.style.gridTemplateColumns = 'repeat(3, 56px)';
+  panel.style.gap = '6px';
+  panel.style.padding = '10px';
+  panel.style.background = 'rgba(15,15,20,0.88)';
+  panel.style.backdropFilter = 'blur(6px)';
+  panel.style.border = '1px solid rgba(255,255,255,0.12)';
+  panel.style.borderRadius = '0 0 10px 10px';
+  panel.style.fontFamily = 'var(--tc-font, system-ui)';
+  panel.style.boxShadow = '0 4px 18px -4px rgba(0,0,0,0.6)';
+
+  function makeBtn(label, color){
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.style.padding = '10px 4px';
+    b.style.fontSize = '12px';
+    b.style.fontWeight = '600';
+    b.style.background = color || '#2a2f38';
+    b.style.color = '#fff';
+    b.style.border = 'none';
+    b.style.borderRadius = '6px';
+    b.style.cursor = 'pointer';
+    b.style.touchAction = 'manipulation';
+    b.style.position = 'relative';
+    b.style.boxShadow = '0 0 0px rgba(0,180,255,0.0), 0 0 0px rgba(255,255,255,0.0)';
+    b.style.transition = 'box-shadow 0.25s ease, transform 0.15s ease, filter 0.2s';
+    b.addEventListener('mouseenter', ()=>{ b.style.boxShadow='0 0 8px rgba(0,200,255,0.65), 0 0 18px rgba(0,120,255,0.35)'; });
+    b.addEventListener('mouseleave', ()=>{ b.style.boxShadow='0 0 0px rgba(0,180,255,0.0)'; });
+    const pressOn = ()=>{ b.style.transform='translateY(1px) scale(0.97)'; b.style.boxShadow='0 0 14px rgba(0,220,255,0.9), 0 0 28px rgba(0,150,255,0.55)'; };
+    const pressOff = ()=>{ b.style.transform='translateY(0) scale(1)'; b.style.boxShadow='0 0 8px rgba(0,200,255,0.65), 0 0 18px rgba(0,120,255,0.35)'; };
+    b.addEventListener('mousedown', pressOn);
+    b.addEventListener('mouseup', pressOff);
+    b.addEventListener('mouseleave', ()=>{ b.style.transform='translateY(0) scale(1)'; });
+    b.addEventListener('touchstart', (ev)=>{ ev.preventDefault(); b.style.filter='brightness(1.25)'; });
+    b.addEventListener('touchend', ()=>{ b.style.filter='none'; });
+    return b;
+  }
+
+  function handleAction(fn){
+    fn();
+    clearInterval(repeatTimer);
+    repeatTimer = setInterval(fn, 120);
+  }
+  function stopRepeat(){ clearInterval(repeatTimer); repeatTimer=null; }
+
+  const actions = [
+    { label:'X+', fn:()=>{ params.posX += moveStepBase; applyAndSaveTransform(); } },
+    { label:'X-', fn:()=>{ params.posX -= moveStepBase; applyAndSaveTransform(); } },
+    { label:'Y+', fn:()=>{ params.posY += moveStepBase; applyAndSaveTransform(); } },
+    { label:'Y-', fn:()=>{ params.posY -= moveStepBase; applyAndSaveTransform(); } },
+    { label:'Z+', fn:()=>{ params.posZ += moveStepBase; applyAndSaveTransform(); } },
+    { label:'Z-', fn:()=>{ params.posZ -= moveStepBase; applyAndSaveTransform(); } },
+    { label:'RX+', fn:()=>{ params.rotX = (params.rotX + rotStep)%360; applyAndSaveTransform(); } },
+    { label:'RX-', fn:()=>{ params.rotX = (params.rotX - rotStep)%360; applyAndSaveTransform(); } },
+    { label:'RY+', fn:()=>{ params.rotY = (params.rotY + rotStep)%360; applyAndSaveTransform(); } },
+    { label:'RY-', fn:()=>{ params.rotY = (params.rotY - rotStep)%360; applyAndSaveTransform(); } },
+    { label:'RZ+', fn:()=>{ params.rotZ = (params.rotZ + rotStep)%360; applyAndSaveTransform(); } },
+    { label:'RZ-', fn:()=>{ params.rotZ = (params.rotZ - rotStep)%360; applyAndSaveTransform(); } }
+  ];
+
+  actions.forEach(a=>{
+    const b = makeBtn(a.label);
+    b.addEventListener('mousedown', ()=>handleAction(a.fn));
+    b.addEventListener('mouseup', stopRepeat);
+    b.addEventListener('mouseleave', stopRepeat);
+    b.addEventListener('touchstart', ()=>handleAction(a.fn));
+    b.addEventListener('touchend', stopRepeat);
+    b.addEventListener('touchcancel', stopRepeat);
+    panel.appendChild(b);
+  });
+
+  const toggle = document.createElement('button');
+  toggle.textContent = 'Gizmo Hide';
+  toggle.style.marginTop = '6px';
+  toggle.style.padding = '8px 10px';
+  toggle.style.border = 'none';
+  toggle.style.background = '#444';
+  toggle.style.color = '#fff';
+  toggle.style.borderRadius = '6px';
+  toggle.style.cursor = 'pointer';
+  toggle.addEventListener('click', ()=>{
+    gizmoVisible = !gizmoVisible;
+    panel.style.display = gizmoVisible ? 'grid' : 'none';
+    toggle.textContent = gizmoVisible ? 'Gizmo Hide' : 'Gizmo Show';
+  });
+
+  gizmoRoot.appendChild(dragBar);
+  gizmoRoot.appendChild(panel);
+  gizmoRoot.appendChild(toggle);
+  document.body.appendChild(gizmoRoot);
+}
+
+if (isTouchDevice()){
+  buildTouchGizmo();
+}
 
