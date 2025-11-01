@@ -1,49 +1,13 @@
-// --- Klavye kontrolleri ---
-window.addEventListener('keydown', (e) => {
-  // Aktif obje yoksa çık
-  const rec = getActiveRecord && getActiveRecord();
-  if (!rec) return;
-  let changed = false;
-  // Pozisyon kontrolleri (WASDQE)
-  const step = e.shiftKey ? 0.4 : 0.1; // 2 kat hız
-  switch (e.key.toLowerCase()) {
-    case 'w': params.posY += step; changed = true; break;
-    case 's': params.posY -= step; changed = true; break;
-    case 'a': params.posX -= step; changed = true; break;
-    case 'd': params.posX += step; changed = true; break;
-    case 'q': params.posZ -= step; changed = true; break;
-    case 'e': params.posZ += step; changed = true; break;
-    // a, b, p, q parametreleri (I/K/J/L/U/O)
-    case 'i': params.a += 0.05; changed = true; break;
-    case 'k': params.a -= 0.05; changed = true; break;
-    case 'j': params.b -= 0.05; changed = true; break;
-    case 'l': params.b += 0.05; changed = true; break;
-    case 'u': params.p = Math.max(1, params.p - 1); changed = true; break;
-    case 'o': params.p = Math.min(15, params.p + 1); changed = true; break;
-    case 'n': params.q = Math.max(1, params.q - 1); changed = true; break;
-    case 'm': params.q = Math.min(15, params.q + 1); changed = true; break;
-  }
-  if (changed) {
-    // Clamp değerler
-    params.a = Math.max(0.1, Math.min(5, params.a));
-    params.b = Math.max(0, Math.min(2, params.b));
-    params.p = Math.round(params.p);
-    params.q = Math.round(params.q);
-    // Güncel parametreleri kaydet
-    saveParamsToActive();
-    if (['i','k','j','l','u','o','n','m'].includes(e.key.toLowerCase())) {
-      rebuild();
-    } else {
-      applyTransform();
-    }
-    try { if (typeof gui !== 'undefined') gui.updateDisplay(); } catch(e) {}
-    e.preventDefault();
-  }
-});
+// Keyboard controls moved to controls/keyboard.js and initialized later
 // ...imports...
 import * as THREE from 'three';
+import { createRendererAndScene } from './core/scene.js';
+import { createBaseGround } from './core/ground.js';
+import { createLights } from './core/lights.js';
+import { setupKeyboardControls } from './controls/keyboard.js';
+import { tabs as TabsConfig } from './ui/tabs';
 import { setupGUI } from './ui/guiMenu.js';
-import { TrefoilCurve } from './trefoil.js';
+import { TrefoilCurve } from './objects/trefoil.js';
 import { SeptafoilCurve } from './objects/septafoil.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { Reflector } from 'three/examples/jsm/objects/Reflector.js';
@@ -131,9 +95,8 @@ function makeTab(label){
   return t;
 }
 
-const tabs = ['Home','Environment','Object','Scene','About','Help'];
 const panels = {};
-tabs.forEach((name) => {
+function addTabButton(name){
   const btn = makeTab(name);
   btn.addEventListener('click', () => showTab(name));
   navBar.appendChild(btn);
@@ -141,27 +104,57 @@ tabs.forEach((name) => {
   panel.style.position = 'fixed';
   panel.style.top = '56px';
   panel.style.left = '12px';
-  panel.style.transform = 'none';
+  panel.style.transform = 'translateY(-8px) scale(0.98)';
   panel.style.zIndex = '999';
-  panel.style.background = 'rgba(10,10,12,0.85)';
+  panel.style.background = 'rgba(15,15,20,0.65)';
+  panel.style.backdropFilter = 'blur(8px) saturate(120%)';
+  panel.style.border = '1px solid rgba(255,255,255,0.08)';
+  panel.style.boxShadow = '0 10px 28px rgba(0,0,0,0.35)';
   panel.style.color = '#fff';
   panel.style.padding = '12px';
-  panel.style.borderRadius = '8px';
+  panel.style.borderRadius = '10px';
   panel.style.minWidth = '320px';
   panel.style.maxHeight = '60vh';
   panel.style.overflow = 'auto';
+  panel.style.opacity = '0';
   panel.style.display = 'none';
+  panel.style.transition = 'transform 360ms cubic-bezier(0.2, 0.8, 0.2, 1.2), opacity 360ms cubic-bezier(0.2, 0.8, 0.2, 1)';
   document.body.appendChild(panel);
   panels[name] = panel;
-  });
+}
+
+// Build left tabs, spacer, and right-aligned Object
+TabsConfig.left.forEach(addTabButton);
+const spacer = document.createElement('div'); spacer.style.flex = '1'; navBar.appendChild(spacer);
+TabsConfig.right.forEach(addTabButton);
+TabsConfig.tail.forEach(addTabButton);
 
 
 
 
 // quick helper to toggle tabs
+const panelHideTimers = {};
+function setPanelVisible(key, visible){
+  const el = panels[key]; if (!el) return;
+  clearTimeout(panelHideTimers[key]);
+  if (visible){
+    if (el.style.display !== 'block'){
+      el.style.display = 'block';
+      // force reflow before animating to target
+      void el.offsetHeight;
+    }
+    el.style.opacity = '1';
+    el.style.transform = 'translateY(0px) scale(1)';
+  } else {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(-8px) scale(0.98)';
+    panelHideTimers[key] = setTimeout(()=>{ el.style.display = 'none'; }, 220);
+  }
+}
+
 function showTab(name){
-  Object.keys(panels).forEach(k => panels[k].style.display = 'none');
-  if (panels[name]) panels[name].style.display = 'block';
+  Object.keys(panels).forEach(k => setPanelVisible(k, false));
+  if (panels[name]) setPanelVisible(name, true);
   // If Object tab is selected, ensure Controls GUI is visible
   if (name === 'Object' && typeof window.showControlsGUI === 'function') {
     window.showControlsGUI();
@@ -292,80 +285,18 @@ toolbar.appendChild(mathBtn);
 toolbar.appendChild(roomBtn);
 toolbar.appendChild(funnelBtn);
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
-// use soft shadows where available
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-container.appendChild(renderer.domElement);
-
-const scene = new THREE.Scene();
+const { renderer, scene, camera } = createRendererAndScene(container);
 scene.background = new THREE.Color(0x0b0f14);
-
-const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 2000);
 camera.position.set(5, 3, 8);
 
 const pmremGenerator = new THREE.PMREMGenerator(renderer);
 pmremGenerator.compileEquirectangularShader();
 
 // Lights
-// create ambient with a safe default intensity (do not reference `params` before it's declared)
-const ambient = new THREE.AmbientLight(0xffffff, 1.0);
-scene.add(ambient);
+const { ambient, spot } = createLights(scene);
 
-const spot = new THREE.SpotLight(0xffffff, 1.5);
-spot.position.set(5, 10, 5);
-spot.castShadow = true;
-spot.angle = Math.PI / 6;
-spot.shadow.mapSize.set(2048, 2048);
-// shadow camera and bias tweaks for better quality
-spot.shadow.bias = -0.0005;
-spot.shadow.camera.near = 0.5;
-spot.shadow.camera.far = 500;
-spot.shadow.camera.fov = 30;
-scene.add(spot);
-// ensure the spot has a target in the scene so we can update it later
-scene.add(spot.target);
-
-// Ground + optional Reflector (Flat default uses a large repeating chessboard)
-const groundSize = 2000;
-// create a canvas-based checkerboard texture
-function createCheckerTexture(size = 512, squares = 8){
-  const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  const sq = size / squares;
-  for(let y=0;y<squares;y++){
-    for(let x=0;x<squares;x++){
-      const isWhite = (x + y) % 2 === 0;
-      ctx.fillStyle = isWhite ? '#ffffff' : '#222222';
-      ctx.fillRect(x*sq, y*sq, sq, sq);
-    }
-  }
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(groundSize / 10, groundSize / 10);
-  tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-  return tex;
-}
-
-const checkerTex = createCheckerTexture(1024, 8);
-const groundMat = new THREE.MeshStandardMaterial({ map: checkerTex, roughness: 0.6, metalness: 0.0 });
-const ground = new THREE.Mesh(new THREE.PlaneGeometry(groundSize, groundSize), groundMat);
-ground.rotation.x = -Math.PI / 2;
-ground.position.y = -2.5;
-ground.receiveShadow = true;
-scene.add(ground);
-
-// persistent shadow receiver so shadows remain visible even when reflector/other grounds are active
-const shadowMat = new THREE.ShadowMaterial({ opacity: 0.6 });
-const shadowReceiver = new THREE.Mesh(new THREE.PlaneGeometry(groundSize, groundSize), shadowMat);
-shadowReceiver.rotation.x = -Math.PI / 2;
-shadowReceiver.position.y = ground.position.y + 0.002; // slight offset to avoid z-fighting
-shadowReceiver.receiveShadow = true;
-shadowReceiver.renderOrder = 2;
-scene.add(shadowReceiver);
+// Ground + shadow receiver
+const { ground, shadowReceiver, groundSize } = createBaseGround(scene, renderer);
 
 import { createSea as makeSea } from './grounds/sea.js';
 import { createMathSurface as makeMath } from './grounds/math.js';
@@ -707,18 +638,80 @@ let knotMaterial = null;
 let ucsScene = null;
 let ucsCamera = null;
 let ucsAxes = null;
+let ucsGroup = null;
+let ucsPickables = [];
+let ucsHover = null;
+let ucsRaycaster = null;
+let ucsTween = null; // {start,duration,fromPos,fromQuat,toPos,toQuat}
 const UCS_SIZE = 96; // pixels
+const UCS_RECT = { x: 10, y: 10, size: UCS_SIZE };
 
 function initUCS(){
   if (ucsScene) return;
   ucsScene = new THREE.Scene();
   ucsCamera = new THREE.PerspectiveCamera(50, 1, 0.1, 10);
   ucsCamera.position.set(0,0,3);
+  ucsRaycaster = new THREE.Raycaster();
+
+  // Root group that holds axes lines and click discs
+  ucsGroup = new THREE.Group();
+  ucsScene.add(ucsGroup);
+
+  // Axes lines (helper)
   ucsAxes = new THREE.AxesHelper(1.2);
-  // brighten axes lines a bit
-  ucsAxes.material.depthTest = false;
+  const axesMat = ucsAxes.material; // LineBasicMaterial
+  axesMat.depthTest = false;
   ucsAxes.renderOrder = 999;
-  ucsScene.add(ucsAxes);
+  ucsGroup.add(ucsAxes);
+
+  // Utility to create a text sprite (letter)
+  function makeLetterSprite(letter, color){
+    const size = 64;
+    const canvas = document.createElement('canvas'); canvas.width = size; canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,size,size);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 44px Inter, system-ui, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.shadowColor = color; ctx.shadowBlur = 8;
+    ctx.fillText(letter, size/2, size/2);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter;
+    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
+    const sp = new THREE.Sprite(mat);
+    sp.scale.set(0.45, 0.45, 1);
+    sp.renderOrder = 1000;
+    return sp;
+  }
+
+  // Create clickable discs at axis ends
+  function addAxisDisc(axis, color, pos){
+    const discG = new THREE.CircleGeometry(0.22, 40);
+    const discM = new THREE.MeshBasicMaterial({ color, depthTest: false });
+    const disc = new THREE.Mesh(discG, discM);
+    disc.position.copy(pos);
+    disc.renderOrder = 1000;
+    disc.userData.axis = axis;
+    // subtle outline ring
+    const ringG = new THREE.RingGeometry(0.24, 0.26, 40);
+    const ringM = new THREE.MeshBasicMaterial({ color: 0x111111, depthTest: false });
+    const ring = new THREE.Mesh(ringG, ringM);
+    ring.position.copy(pos);
+    ring.renderOrder = 999;
+    // label sprite
+    const letter = axis;
+    const letterSprite = makeLetterSprite(letter, color);
+    letterSprite.position.copy(pos.clone().add(new THREE.Vector3(0,0,0.001)));
+    ucsGroup.add(ring);
+    ucsGroup.add(disc);
+    ucsGroup.add(letterSprite);
+    ucsPickables.push(disc);
+    return disc;
+  }
+
+  addAxisDisc('X', 0xff4444, new THREE.Vector3(1.2, 0, 0));
+  addAxisDisc('Y', 0x66cc44, new THREE.Vector3(0, 1.2, 0));
+  addAxisDisc('Z', 0x2a7fff, new THREE.Vector3(0, 0, 1.2));
 }
 
 function toggleUCSGizmo(v){
@@ -726,8 +719,138 @@ function toggleUCSGizmo(v){
   if (v && !ucsScene) initUCS();
 }
 
+// Snap camera to axis (Blender-like); hold Shift for negative direction
+function snapViewToAxis(axis, negative){
+  const dir = new THREE.Vector3(
+    axis === 'X' ? 1 : 0,
+    axis === 'Y' ? 1 : 0,
+    axis === 'Z' ? 1 : 0
+  );
+  if (negative) dir.multiplyScalar(-1);
+  const target = controls ? controls.target.clone() : new THREE.Vector3(0,0,0);
+  const dist = camera.position.distanceTo(target) || 5;
+  const toPos = target.clone().add(dir.multiplyScalar(dist));
+  // choose up vector: prefer Z-up except when looking along Z
+  const up = (axis === 'Z') ? new THREE.Vector3(0,1,0) : new THREE.Vector3(0,0,1);
+
+  // compute target quaternion from lookAt
+  const m = new THREE.Matrix4();
+  m.lookAt(toPos, target, up);
+  const toQuat = new THREE.Quaternion().setFromRotationMatrix(m).invert();
+
+  // tween setup
+  ucsTween = {
+    start: performance.now(),
+    duration: 350,
+    fromPos: camera.position.clone(),
+    fromQuat: camera.quaternion.clone(),
+    toPos,
+    toQuat
+  };
+}
+
+// Pointer helpers for UCS area
+function getPointerInUCS(event){
+  const rect = renderer.domElement.getBoundingClientRect();
+  const px = event.clientX - rect.left;
+  const pyFromBottom = rect.bottom - event.clientY; // bottom-origin
+  const { x, y, size } = UCS_RECT;
+  const inside = (px >= x && px <= x + size && pyFromBottom >= y && pyFromBottom <= y + size);
+  if (!inside) return null;
+  const nx = ((px - x) / size) * 2 - 1;
+  const ny = ((pyFromBottom - y) / size) * 2 - 1;
+  return { ndc: new THREE.Vector2(nx, ny) };
+}
+
+function handleUCSPointerMove(event){
+  if (!params.showUCSGizmo || !ucsScene) return;
+  const hit = getPointerInUCS(event);
+  if (!hit){
+    if (ucsHover){ ucsHover.scale.set(1,1,1); ucsHover = null; renderer.domElement.style.cursor = 'default'; }
+    return;
+  }
+  ucsRaycaster.setFromCamera(hit.ndc, ucsCamera);
+  const isects = ucsRaycaster.intersectObjects(ucsPickables, false);
+  if (isects.length){
+    const obj = isects[0].object;
+    if (ucsHover && ucsHover !== obj) ucsHover.scale.set(1,1,1);
+    ucsHover = obj;
+    ucsHover.scale.set(1.2,1.2,1.2);
+    renderer.domElement.style.cursor = 'pointer';
+  } else {
+    if (ucsHover){ ucsHover.scale.set(1,1,1); ucsHover = null; }
+    renderer.domElement.style.cursor = 'default';
+  }
+}
+
+function handleUCSPointerDown(event){
+  if (!params.showUCSGizmo || !ucsScene) return;
+  const hit = getPointerInUCS(event);
+  if (!hit) return;
+  ucsRaycaster.setFromCamera(hit.ndc, ucsCamera);
+  const isects = ucsRaycaster.intersectObjects(ucsPickables, false);
+  if (isects.length){
+    event.preventDefault();
+    const axis = isects[0].object.userData.axis;
+    const negative = !!event.shiftKey;
+    snapViewToAxis(axis, negative);
+  }
+}
+
+renderer.domElement.addEventListener('pointermove', handleUCSPointerMove);
+renderer.domElement.addEventListener('pointerdown', handleUCSPointerDown);
+
 // Setup GUI menu (objectType at the top)
-const { gui, viewFolder } = setupGUI(params, rebuild, updateMaterial, toggleReflection, toggleWireframe, applyTransform, knotMaterial, wireframeMesh, spot, ambient, reflector, saveParamsToActive, toggleUCSGizmo);
+const { gui, viewFolder } = setupGUI(
+  params,
+  rebuild,
+  updateMaterial,
+  toggleReflection,
+  toggleWireframe,
+  applyTransform,
+  knotMaterial,
+  wireframeMesh,
+  spot,
+  ambient,
+  reflector,
+  saveParamsToActive,
+  toggleUCSGizmo
+);
+
+// Do not show GUI on first launch; persist user's last choice
+let guiVisible = true;
+const guiPref = localStorage.getItem('tc_gui_open');
+if (guiPref === null || guiPref === '0') {
+  gui.domElement.style.display = 'none';
+  guiVisible = false;
+}
+function setGUIVisible(v){
+  guiVisible = !!v;
+  gui.domElement.style.display = guiVisible ? '' : 'none';
+  localStorage.setItem('tc_gui_open', guiVisible ? '1' : '0');
+}
+
+// Environment panel: add a simple toggle to open/close Advanced Controls (GUI)
+if (envPanel) {
+  const row = document.createElement('div');
+  row.style.display = 'flex';
+  row.style.alignItems = 'center';
+  row.style.gap = '8px';
+  row.style.marginBottom = '8px';
+  const label = document.createElement('label');
+  const chk = document.createElement('input');
+  chk.type = 'checkbox';
+  chk.checked = guiVisible;
+  chk.addEventListener('change', () => setGUIVisible(chk.checked));
+  label.appendChild(chk);
+  label.append(' Advanced Controls (GUI)');
+  row.appendChild(label);
+  // insert at top of the Environment panel
+  envPanel.insertBefore(row, envPanel.firstChild);
+}
+
+// Initialize keyboard controls after GUI and helpers are available
+const disposeKeyboard = setupKeyboardControls({ params, getActiveRecord, applyTransform, rebuild, saveParamsToActive, gui });
 
 // Export folder (if needed)
 // const exportFolder = gui.addFolder('Export');
@@ -1288,9 +1411,18 @@ function animate(){
     if (!ucsScene) initUCS();
     // Align UCS camera to main camera orientation
     ucsCamera.quaternion.copy(camera.quaternion);
+    // run tween if active
+    if (ucsTween){
+      const nowMs = performance.now();
+      const t = Math.min(1, (nowMs - ucsTween.start) / ucsTween.duration);
+      camera.position.lerpVectors(ucsTween.fromPos, ucsTween.toPos, t);
+      THREE.Quaternion.slerp(ucsTween.fromQuat, ucsTween.toQuat, camera.quaternion, t);
+      if (t >= 1) ucsTween = null;
+      if (controls) controls.update();
+    }
     // prepare viewport/scissor in bottom-left corner
     const size = UCS_SIZE;
-    const px = 10, py = 10;
+    const px = UCS_RECT.x, py = UCS_RECT.y;
     renderer.autoClear = false;
     renderer.clearDepth();
     renderer.setScissorTest(true);
