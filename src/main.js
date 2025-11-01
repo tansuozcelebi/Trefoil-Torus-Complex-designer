@@ -57,15 +57,7 @@ activeInfo.style.color = '#3fa7ff'; // blue
 activeInfo.style.fontSize = '12px';
 navBar.appendChild(activeInfo);
 
-// add version display
-const versionInfo = document.createElement('div');
-versionInfo.textContent = 'v1.1.3';
-versionInfo.style.marginLeft = 'auto';
-versionInfo.style.fontSize = '10px';
-versionInfo.style.color = '#7da6cc';
-versionInfo.style.fontWeight = '500';
-versionInfo.style.textShadow = '0 0 4px rgba(0,180,255,0.35)';
-navBar.appendChild(versionInfo);
+// version display moved to bottom-left stats overlay
 
 function makeTab(label){
   const t = document.createElement('button');
@@ -225,6 +217,7 @@ scenePanel.querySelector('#toggleHelpers').addEventListener('change', (e) => {
 });
 
 // Stats overlay (bottom-left): vertex & face counts
+const APP_VERSION = 'v1.1.3';
 const statsOverlay = document.createElement('div');
 statsOverlay.style.position = 'fixed';
 statsOverlay.style.left = '12px';
@@ -237,19 +230,19 @@ statsOverlay.style.fontFamily = 'monospace';
 statsOverlay.style.fontSize = '13px';
 statsOverlay.style.borderRadius = '6px';
 statsOverlay.style.minWidth = '120px';
-statsOverlay.innerHTML = `Verts: 0<br/>Faces: 0`;
+statsOverlay.innerHTML = `Verts: 0<br/>Faces: 0<br/><span style="display:inline-block;margin-top:4px;font-size:11px;color:#7da6cc;opacity:0.9">${APP_VERSION}</span>`;
 document.body.appendChild(statsOverlay);
 
 function updateStats(){
   if (!knotGeometry) {
-    statsOverlay.innerHTML = `Verts: 0<br/>Faces: 0`;
+    statsOverlay.innerHTML = `Verts: 0<br/>Faces: 0<br/><span style="display:inline-block;margin-top:4px;font-size:11px;color:#7da6cc;opacity:0.9">${APP_VERSION}</span>`;
     return;
   }
   const verts = knotGeometry.attributes && knotGeometry.attributes.position ? knotGeometry.attributes.position.count : 0;
   let faces = 0;
   if (knotGeometry.index) faces = Math.floor(knotGeometry.index.count / 3);
   else faces = Math.floor(verts / 3);
-  statsOverlay.innerHTML = `Verts: ${verts.toLocaleString()}<br/>Faces: ${faces.toLocaleString()}`;
+  statsOverlay.innerHTML = `Verts: ${verts.toLocaleString()}<br/>Faces: ${faces.toLocaleString()}<br/><span style="display:inline-block;margin-top:4px;font-size:11px;color:#7da6cc;opacity:0.9">${APP_VERSION}</span>`;
 }
 
 // top toolbar for ground style (moved into Environment panel)
@@ -300,6 +293,8 @@ const { ground, shadowReceiver, groundSize } = createBaseGround(scene, renderer)
 
 import { createSea as makeSea } from './grounds/sea.js';
 import { createMathSurface as makeMath } from './grounds/math.js';
+import { createRoom as makeRoom } from './grounds/room.js';
+import { createFunnel as makeFunnel } from './grounds/funnel.js';
 
 let reflector = null;
 let seaObj = null; // {mesh, setTime, resize}
@@ -1151,15 +1146,16 @@ function setGroundStyle(style){
   if (style === 'Flat'){
     ground.visible = true;
     ground.receiveShadow = true;
-    shadowReceiver.visible = true;
+    shadowReceiver.visible = true; // project soft shadow onto flat plane
     if (!scene.children.includes(shadowReceiver)) scene.add(shadowReceiver);
   } else if (style === 'Sea'){
     seaObj = makeSea(ground.position.y);
     // enlarge sea coverage to feel like an infinite plane
     seaObj.mesh.scale.set(8,8,8);
     scene.add(seaObj.mesh);
-    shadowReceiver.visible = true;
-    if (!scene.children.includes(shadowReceiver)) scene.add(shadowReceiver);
+    // Let shadow fall onto the sea surface itself
+    shadowReceiver.visible = false;
+    ground.visible = false;
   } else if (style === 'Math'){
     mathObj = makeMath(ground.position.y);
     scene.add(mathObj.mesh);
@@ -1169,178 +1165,21 @@ function setGroundStyle(style){
     ground.visible = false;
     if (mathObj.mesh) mathObj.mesh.receiveShadow = true;
   } else if (style === 'Room'){
-    // Simple 5-faced room using an inverted box (no top)
-    const roomSize = 50;
-    const boxGeo = new THREE.BoxGeometry(roomSize, roomSize, roomSize);
-    const boxMat = new THREE.MeshStandardMaterial({ color: 0x202024, roughness: 0.9, metalness: 0.0, side: THREE.BackSide });
-    const box = new THREE.Mesh(boxGeo, boxMat);
-    box.position.y = roomSize/2 + ground.position.y;
-    box.receiveShadow = true;
-    roomObj = { mesh: box, dispose: () => { boxGeo.dispose(); boxMat.dispose(); } };
+    roomObj = makeRoom(ground.position.y);
     scene.add(roomObj.mesh);
-    ground.visible = true; // keep ground/checker visible inside room
-  } else if (style === 'Funnel'){
-    // Create a funnel/cone under the object
-    const radiusTop = 0.1;
-    const radiusBottom = 20;
-    const height = 40;
-    const radialSegments = 64;
-    const coneGeo = new THREE.ConeGeometry(radiusBottom, height, radialSegments, 1, true);
-    // rotate so it opens downward and sits under the ground
-    const coneMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1e, roughness: 0.85, metalness: 0.0, side: THREE.DoubleSide });
-    const cone = new THREE.Mesh(coneGeo, coneMat);
-    cone.rotation.x = -Math.PI/2; // point downwards along -Y after rotate
-    cone.position.set(0, ground.position.y - height*0.5, 0);
-    cone.receiveShadow = true;
-    cone.castShadow = false;
-    funnelObj = { mesh: cone, dispose: () => { coneGeo.dispose(); coneMat.dispose(); } };
-    scene.add(funnelObj.mesh);
+    // Keep the flat ground in the room and project shadow onto it
     ground.visible = true;
+    shadowReceiver.visible = true;
+    if (!scene.children.includes(shadowReceiver)) scene.add(shadowReceiver);
+  } else if (style === 'Funnel'){
+    funnelObj = makeFunnel(ground.position.y);
+    scene.add(funnelObj.mesh);
+    // Shadow should fall onto the funnel surface, not the flat plane
+    ground.visible = false;
+    shadowReceiver.visible = false;
   }
 }
 
-function createSea(){
-  // GPU procedural seascape shader (adapted from TDM Seascape)
-  const geo = new THREE.PlaneGeometry(200, 200, 1, 1);
-
-  seaUniforms = {
-    iTime: { value: 0.0 },
-    iResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
-    iMouse: { value: new THREE.Vector2(0, 0) }
-  };
-
-  const frag = `
-  precision mediump float;
-  uniform float iTime;
-  uniform vec2 iResolution;
-  uniform vec2 iMouse;
-
-  #define PI 3.141592
-  #define SEA_HEIGHT 0.6
-  #define SEA_CHOPPY 4.0
-  #define SEA_SPEED 0.8
-  #define SEA_FREQ 0.16
-
-  mat2 octave_m = mat2(1.6,1.2,-1.2,1.6);
-
-  float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7))) * 43758.5453123); }
-  float noise2(vec2 p){
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    vec2 u = f*f*(3.0-2.0*f);
-    return -1.0 + 2.0 * mix(mix(hash(i+vec2(0.0,0.0)), hash(i+vec2(1.0,0.0)), u.x), mix(hash(i+vec2(0.0,1.0)), hash(i+vec2(1.0,1.0)), u.x), u.y);
-  }
-
-  float sea_octave(vec2 uv, float choppy){
-    uv += noise2(uv);
-    vec2 wv = 1.0 - abs(sin(uv));
-    vec2 swv = abs(cos(uv));
-    wv = mix(wv, swv, wv);
-    return pow(1.0 - pow(wv.x * wv.y, 0.65), choppy);
-  }
-
-  float mapSea(vec3 p){
-    float freq = SEA_FREQ;
-    float amp = SEA_HEIGHT;
-    float choppy = SEA_CHOPPY;
-    vec2 uv = p.xz; uv.x *= 0.75;
-    float d; float h = 0.0;
-    float SEA_TIME = 1.0 + iTime * SEA_SPEED;
-    for(int i=0;i<3;i++){
-      d = sea_octave((uv+SEA_TIME)*freq, choppy);
-      d += sea_octave((uv-SEA_TIME)*freq, choppy);
-      h += d * amp;
-      uv = octave_m * uv; freq *= 1.9; amp *= 0.22;
-      choppy = mix(choppy, 1.0, 0.2);
-    }
-    return p.y - h;
-  }
-
-  vec3 getSkyColor(vec3 e){
-    e.y = (max(e.y,0.0)*0.8+0.2)*0.8;
-    return vec3(pow(1.0-e.y,2.0), 1.0-e.y, 0.6+(1.0-e.y)*0.4) * 1.1;
-  }
-
-  float diffuseN(vec3 n, vec3 l, float p){ return pow(dot(n,l)*0.4 + 0.6, p); }
-  float specularN(vec3 n, vec3 l, vec3 e, float s){
-    float nrm = (s + 8.0) / (PI * 8.0);
-    return pow(max(dot(reflect(e,n), l), 0.0), s) * nrm;
-  }
-
-  vec3 getSeaColor(vec3 p, vec3 n, vec3 l, vec3 eye, vec3 dist){
-    float fresnel = clamp(1.0 - dot(n, -eye), 0.0, 1.0);
-    fresnel = min(fresnel * fresnel * fresnel, 0.5);
-    vec3 reflected = getSkyColor(reflect(eye, n));
-    vec3 SEA_BASE = vec3(0.0,0.09,0.18);
-    vec3 SEA_WATER_COLOR = vec3(0.8,0.9,0.6)*0.6;
-    vec3 refracted = SEA_BASE + diffuseN(n, l, 80.0) * SEA_WATER_COLOR * 0.12;
-    vec3 color = mix(refracted, reflected, fresnel);
-    float atten = max(1.0 - dot(dist, dist) * 0.001, 0.0);
-    color += SEA_WATER_COLOR * (p.y - SEA_HEIGHT) * 0.18 * atten;
-    color += specularN(n, l, eye, 600.0 * inversesqrt(dot(dist,dist)));
-    return color;
-  }
-
-  vec3 getNormal(vec3 p){
-    float eps = 0.1 / iResolution.x;
-    vec3 n;
-    n.y = mapSea(p);
-    n.x = mapSea(vec3(p.x+eps,p.y,p.z)) - n.y;
-    n.z = mapSea(vec3(p.x,p.y,p.z+eps)) - n.y;
-    n.y = eps;
-    return normalize(n);
-  }
-
-  vec3 getPixel(vec2 fragCoord, float time){
-    vec2 uv = fragCoord / iResolution.xy;
-    uv = uv * 2.0 - 1.0;
-    uv.x *= iResolution.x / iResolution.y;
-    vec3 ang = vec3(sin(time*3.0)*0.1, sin(time)*0.2+0.3, time);
-    vec3 ori = vec3(0.0,3.5,time*5.0);
-    vec3 dir = normalize(vec3(uv.xy, -2.0)); dir.z += length(uv) * 0.14;
-    // simple rotation via euler omitted for brevity; use dir directly
-    vec3 p = ori;
-    // naive march: sample height at origin projection
-    float t = 0.0; float maxT = 1000.0; float h = mapSea(ori + dir * maxT);
-    vec3 hit = ori + dir * maxT;
-    vec3 dist = hit - ori;
-    vec3 n = getNormal(hit);
-    vec3 light = normalize(vec3(0.0,1.0,0.8));
-    return mix(getSkyColor(dir), getSeaColor(hit, n, light, dir, dist), pow(smoothstep(0.0,-0.02,dir.y),0.2));
-  }
-
-  void main(){
-    vec2 fragCoord = gl_FragCoord.xy;
-    float time = iTime * 0.3 + iMouse.x*0.01;
-    vec3 color = getPixel(fragCoord, time);
-    gl_FragColor = vec4(pow(color, vec3(0.65)), 1.0);
-  }
-  `;
-
-  const vert = `
-  precision mediump float;
-  attribute vec3 position;
-  attribute vec2 uv;
-  uniform mat4 modelViewMatrix;
-  uniform mat4 projectionMatrix;
-  varying vec2 vUv;
-  void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
-  `;
-
-  const mat = new THREE.ShaderMaterial({
-    uniforms: seaUniforms,
-    vertexShader: vert,
-    fragmentShader: frag,
-    transparent: false,
-    side: THREE.DoubleSide
-  });
-
-  seaMesh = new THREE.Mesh(geo, mat);
-  seaMesh.rotation.x = -Math.PI/2;
-  seaMesh.position.y = ground.position.y;
-  seaMesh.receiveShadow = true;
-  scene.add(seaMesh);
-}
 
 window.setMathWireframeColor = function(color) {
   if (mathObj && mathObj.setWireframeColor) {
@@ -1365,9 +1204,6 @@ function onWindowResize(){
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
-  if (seaUniforms && seaUniforms.iResolution){
-    seaUniforms.iResolution.value.set(window.innerWidth, window.innerHeight);
-  }
   if (seaObj && seaObj.resize){
     seaObj.resize(window.innerWidth, window.innerHeight);
   }
