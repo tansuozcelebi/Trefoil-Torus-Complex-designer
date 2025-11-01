@@ -6,6 +6,10 @@ export function createRendererAndScene(container){
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  
+  // Add accessibility label for SEO and a11y
+  renderer.domElement.setAttribute('aria-label', 'Trefoil knot 3D visualization of parametric surface');
+  
   container.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();

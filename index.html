@@ -3,7 +3,48 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TreFoil Torus Designer by Tansu Ozcelebi</title>
+    
+    <!-- SEO Meta Tags -->
+    <title>Trefoil Knot – 3D Parametric Surface Visualization | FABUS</title>
+    <meta name="description" content="Explore interactive 3D trefoil knots, parametric surfaces, and curves built with WebGL and Three.js. Learn about mathematical knot theory and visualization of complex geometry." />
+    <meta name="keywords" content="trefoil, trefoil knot, parametric surface, parametric curve, 3D geometry, WebGL, Three.js, mathematical visualization, topology, knot theory" />
+    <meta name="author" content="KREA Makina / Tansu Ozcelebi" />
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="Trefoil Knot – Parametric 3D Surface Visualization" />
+    <meta property="og:description" content="A real-time interactive 3D visualization of the trefoil knot and parametric surfaces using WebGL and Three.js." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://trefoil.fabus.app/preview.jpg" />
+    <meta property="og:url" content="https://trefoil.fabus.app/" />
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Trefoil Knot Visualization" />
+    <meta name="twitter:description" content="Interactive 3D trefoil knot built with Three.js and WebGL showcasing parametric geometry." />
+    <meta name="twitter:image" content="https://trefoil.fabus.app/preview.jpg" />
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://trefoil.fabus.app/" />
+    
+    <!-- Structured Data (JSON-LD Schema) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "CreativeWork",
+      "name": "Trefoil Knot Visualization",
+      "description": "Interactive 3D visualization of a trefoil knot and parametric surfaces using WebGL and Three.js.",
+      "keywords": ["trefoil knot", "parametric surface", "parametric curve", "3D visualization", "Three.js", "geometry", "mathematics", "knot theory", "WebGL"],
+      "author": {
+        "@type": "Organization",
+        "name": "KREA Makina"
+      },
+      "url": "https://trefoil.fabus.app/",
+      "inLanguage": "en",
+      "license": "https://creativecommons.org/licenses/by/4.0/",
+      "datePublished": "2025-11-01"
+    }
+    </script>
+    
     <style>
       html,body{height:100%;margin:0;background:#0b0f14;}
       canvas{display:block;width:100%;height:100%;}
@@ -13,6 +54,101 @@
   <body>
     <script type="module" src="/src/main.js"></script>
     <div id="overlay">TreFoil Torus Designer — Tansu Ozcelebi '25</div>
+    
+    <!-- Invisible Semantic Content Block for SEO -->
+    <div style="display:none;">
+      <!-- English -->
+      <h2>About Trefoil Knots and Parametric Surfaces</h2>
+      <p>
+        The Trefoil Knot is one of the simplest nontrivial mathematical knots, defined parametrically using trigonometric functions to form a closed 3D loop.
+        This visualization, built with WebGL and Three.js, demonstrates the elegance of mathematical geometry and topology.
+        It represents a smooth parametric curve that can also generate continuous surfaces when extended along its tangent and normal vectors.
+      </p>
+      <p>
+        Applications include 3D modeling, differential geometry, topological art, simulation of helical or knotted structures, and mathematical education.
+        Explore how parametric equations and spline-based rendering can transform mathematical functions into artistic and interactive digital sculptures.
+      </p>
+      <p>
+        Keywords: parametric surfaces, mathematical art, 3D topology, WebGL visualization, Three.js knots, differential geometry, septafoil, torus knot designer, interactive geometry.
+      </p>
+
+      <!-- Spanish / Español -->
+      <h2 lang="es">Sobre Nudos Trefoil y Superficies Paramétricas</h2>
+      <p lang="es">
+        El Nudo Trefoil es uno de los nudos matemáticos no triviales más simples, definido paramétricamente usando funciones trigonométricas para formar un bucle 3D cerrado.
+        Esta visualización, construida con WebGL y Three.js, demuestra la elegancia de la geometría matemática y la topología.
+        Representa una curva paramétrica suave que también puede generar superficies continuas cuando se extiende a lo largo de sus vectores tangentes y normales.
+      </p>
+
+      <!-- Mandarin Chinese / 中文 -->
+      <h2 lang="zh">关于三叶结和参数曲面</h2>
+      <p lang="zh">
+        三叶结是最简单的非平凡数学结之一，使用三角函数参数化定义以形成闭合的3D环路。
+        此可视化使用WebGL和Three.js构建，展示了数学几何和拓扑的优雅。
+        它代表了一条平滑的参数曲线，沿其切向量和法向量延伸时也可以生成连续曲面。
+      </p>
+
+      <!-- Hindi / हिन्दी -->
+      <h2 lang="hi">ट्रेफ़ॉइल नॉट्स और पैरामीट्रिक सतहों के बारे में</h2>
+      <p lang="hi">
+        ट्रेफ़ॉइल नॉट सबसे सरल गैर-तुच्छ गणितीय गांठों में से एक है, जो एक बंद 3D लूप बनाने के लिए त्रिकोणमितीय कार्यों का उपयोग करके पैरामीट्रिक रूप से परिभाषित किया गया है।
+        WebGL और Three.js के साथ निर्मित यह विज़ुअलाइज़ेशन गणितीय ज्यामिति और टोपोलॉजी की सुंदरता को प्रदर्शित करता है।
+      </p>
+
+      <!-- Arabic / العربية -->
+      <h2 lang="ar">حول عقد الثلاثي والأسطح البارامترية</h2>
+      <p lang="ar">
+        عقدة الثلاثي هي واحدة من أبسط العقد الرياضية غير التافهة، المحددة بارامتريًا باستخدام الدوال المثلثية لتشكيل حلقة ثلاثية الأبعاد مغلقة.
+        هذا التصور، المبني باستخدام WebGL و Three.js، يوضح أناقة الهندسة الرياضية والطوبولوجيا.
+      </p>
+
+      <!-- Portuguese / Português -->
+      <h2 lang="pt">Sobre Nós Trefoil e Superfícies Paramétricas</h2>
+      <p lang="pt">
+        O Nó Trefoil é um dos nós matemáticos não triviais mais simples, definido parametricamente usando funções trigonométricas para formar um loop 3D fechado.
+        Esta visualização, construída com WebGL e Three.js, demonstra a elegância da geometria matemática e topologia.
+        Representa uma curva paramétrica suave que também pode gerar superfícies contínuas quando estendida ao longo de seus vetores tangentes e normais.
+      </p>
+
+      <!-- Bengali / বাংলা -->
+      <h2 lang="bn">ট্রেফয়েল নট এবং প্যারামেট্রিক পৃষ্ঠ সম্পর্কে</h2>
+      <p lang="bn">
+        ট্রেফয়েল নট হল সবচেয়ে সরল অ-তুচ্ছ গাণিতিক গিঁটগুলির মধ্যে একটি, যা একটি বদ্ধ 3D লুপ গঠনের জন্য ত্রিকোণমিতিক ফাংশন ব্যবহার করে প্যারামেট্রিকভাবে সংজ্ঞায়িত করা হয়।
+        WebGL এবং Three.js দিয়ে নির্মিত এই ভিজ্যুয়ালাইজেশন গাণিতিক জ্যামিতি এবং টপোলজির কমনীয়তা প্রদর্শন করে।
+      </p>
+
+      <!-- Russian / Русский -->
+      <h2 lang="ru">О узлах трилистника и параметрических поверхностях</h2>
+      <p lang="ru">
+        Узел трилистника — это один из простейших нетривиальных математических узлов, определяемый параметрически с использованием тригонометрических функций для формирования замкнутой 3D петли.
+        Эта визуализация, построенная с помощью WebGL и Three.js, демонстрирует элегантность математической геометрии и топологии.
+        Она представляет собой гладкую параметрическую кривую, которая также может генерировать непрерывные поверхности при расширении вдоль касательных и нормальных векторов.
+      </p>
+
+      <!-- Japanese / 日本語 -->
+      <h2 lang="ja">三つ葉結びとパラメトリック曲面について</h2>
+      <p lang="ja">
+        三つ葉結びは、三角関数を使用してパラメトリックに定義された、最も単純な非自明な数学的結び目の1つです。
+        WebGLとThree.jsで構築されたこの視覚化は、数学的幾何学とトポロジーの優雅さを示しています。
+        接線ベクトルと法線ベクトルに沿って拡張されると、連続的な曲面を生成できる滑らかなパラメトリック曲線を表しています。
+      </p>
+
+      <!-- French / Français -->
+      <h2 lang="fr">À propos des nœuds de trèfle et des surfaces paramétriques</h2>
+      <p lang="fr">
+        Le nœud de trèfle est l'un des nœuds mathématiques non triviaux les plus simples, défini paramétriquement à l'aide de fonctions trigonométriques pour former une boucle 3D fermée.
+        Cette visualisation, construite avec WebGL et Three.js, démontre l'élégance de la géométrie mathématique et de la topologie.
+        Elle représente une courbe paramétrique lisse qui peut également générer des surfaces continues lorsqu'elle est étendue le long de ses vecteurs tangents et normaux.
+      </p>
+
+      <!-- German / Deutsch -->
+      <h2 lang="de">Über Kleeblattknoten und parametrische Flächen</h2>
+      <p lang="de">
+        Der Kleeblattknoten ist einer der einfachsten nichttrivialen mathematischen Knoten, der parametrisch mithilfe trigonometrischer Funktionen definiert wird, um eine geschlossene 3D-Schleife zu bilden.
+        Diese mit WebGL und Three.js erstellte Visualisierung demonstriert die Eleganz der mathematischen Geometrie und Topologie.
+        Sie stellt eine glatte parametrische Kurve dar, die auch kontinuierliche Flächen erzeugen kann, wenn sie entlang ihrer Tangenten- und Normalenvektoren erweitert wird.
+      </p>
+    </div>
     
   </body>
 </html>

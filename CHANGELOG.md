@@ -3,10 +3,19 @@
 All notable changes to this project will be documented in this file.
 
 # [1.1.4] - 2025-11-01
+### Added
+- Comprehensive SEO optimization with meta tags, Open Graph, Twitter Cards, and JSON-LD structured data.
+- Invisible semantic content block for search engine indexing (trefoil knot, parametric surfaces, topology).
+- **Multilingual SEO content in 10 major languages**: English, Spanish, Mandarin Chinese, Hindi, Arabic, Portuguese, Bengali, Russian, Japanese, French, German.
+- Canonical URL and accessibility aria-label on 3D canvas element.
+
 ### Changed
 - Scene panel and preset management logic extracted to `src/ui/scenePanel.js` for better code organization.
+- Touch gizmo (6-axis transform) extracted to `src/ui/touchGizmo.js` for cleaner architecture.
 - Modularized defaultPresets, loadUserPresets, saveUserPresets, and createPresetThumbnail functions.
 - Presets now save and restore position (posX, posY, posZ) and rotation (rotX, rotY, rotZ) values.
+- Home tab no longer opens by default on app launch - user clicks nav buttons to open panels.
+- Page title optimized for SEO: "Trefoil Knot – 3D Parametric Surface Visualization | FABUS".
 
 ### Fixed
 - Code structure improved with cleaner separation of concerns.
