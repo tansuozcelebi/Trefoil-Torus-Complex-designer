@@ -9,7 +9,7 @@ import { tabs as TabsConfig } from './ui/tabs';
 import { setupGUI } from './ui/guiMenu.js';
 import { setupScenePanel } from './ui/scenePanel.js';
 import { setupTouchGizmo } from './ui/touchGizmo.js';
-import { getHelpHtml, getCurrentLanguage, setLanguage } from './ui/help.js';
+import { getHelpHtml, getCurrentLanguage, setLanguage, languages } from './ui/help.js';
 import { getAboutHtml } from './ui/about.js';
 import { TrefoilCurve } from './objects/trefoil.js';
 import { SeptafoilCurve } from './objects/septafoil.js';
@@ -125,10 +125,39 @@ const spacer = document.createElement('div'); spacer.style.flex = '1'; navBar.ap
 TabsConfig.right.forEach(addTabButton);
 TabsConfig.tail.forEach(addTabButton);
 
-// Language selector button
+// Global language change function
+function updateLanguage(newLang) {
+  setLanguage(newLang);
+  
+  // Update navbar button
+  const langBtn = document.querySelector('button[data-lang-selector]');
+  const langData = languages.find(l => l.code === newLang);
+  if (langBtn && langData) {
+    langBtn.innerHTML = `${langData.flag} ${newLang.toUpperCase()}`;
+  }
+  
+  // Update Help panel if it exists
+  if (panels['Help']) {
+    panels['Help'].innerHTML = getHelpHtml(newLang);
+  }
+  
+  // Update About panel if it exists
+  if (panels['About']) {
+    const aboutSelect = panels['About'].querySelector('#aboutLang');
+    if (aboutSelect) aboutSelect.value = newLang;
+    const aboutContent = panels['About'].querySelector('#aboutContent');
+    if (aboutContent) aboutContent.innerHTML = getAboutHtml(newLang);
+  }
+}
+
+// Language selector dropdown with flags
+const langContainer = document.createElement('div');
+langContainer.style.cssText = 'position: relative;';
+
+const currentLangData = languages.find(l => l.code === getCurrentLanguage()) || languages[0];
 const langBtn = document.createElement('button');
 langBtn.setAttribute('data-lang-selector', 'true');
-langBtn.textContent = getCurrentLanguage().toUpperCase();
+langBtn.innerHTML = `${currentLangData.flag} ${currentLangData.code.toUpperCase()}`;
 langBtn.style.cssText = `
   padding: 6px 10px;
   background: rgba(60,60,70,0.9);
@@ -139,7 +168,59 @@ langBtn.style.cssText = `
   font-size: 11px;
   font-weight: 600;
   transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 `;
+
+const langDropdown = document.createElement('div');
+langDropdown.style.cssText = `
+  display: none;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: rgba(30,30,35,0.95);
+  border: 1px solid rgba(100,100,120,0.5);
+  border-radius: 6px;
+  backdrop-filter: blur(8px);
+  max-height: 400px;
+  overflow-y: auto;
+  z-index: 10000;
+  min-width: 180px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+`;
+
+languages.forEach(lang => {
+  const item = document.createElement('div');
+  item.style.cssText = `
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: #fff;
+  `;
+  item.innerHTML = `<span style="font-size:16px">${lang.flag}</span> <span>${lang.name}</span>`;
+  
+  item.onmouseenter = () => item.style.background = 'rgba(60,60,80,0.8)';
+  item.onmouseleave = () => item.style.background = 'transparent';
+  
+  item.onclick = () => {
+    updateLanguage(lang.code);
+    langDropdown.style.display = 'none';
+  };
+  
+  langDropdown.appendChild(item);
+});
+
+langBtn.onclick = (e) => {
+  e.stopPropagation();
+  langDropdown.style.display = langDropdown.style.display === 'none' ? 'block' : 'none';
+};
+
 langBtn.onmouseenter = () => {
   langBtn.style.background = 'rgba(80,80,100,0.9)';
   langBtn.style.borderColor = 'rgba(120,120,150,0.7)';
@@ -148,26 +229,15 @@ langBtn.onmouseleave = () => {
   langBtn.style.background = 'rgba(60,60,70,0.9)';
   langBtn.style.borderColor = 'rgba(100,100,120,0.5)';
 };
-langBtn.onclick = () => {
-  const current = getCurrentLanguage();
-  const newLang = current === 'tr' ? 'en' : 'tr';
-  setLanguage(newLang);
-  langBtn.textContent = newLang.toUpperCase();
-  
-  // Update Help panel if visible
-  if (panels['Help'] && panels['Help'].style.display === 'block') {
-    panels['Help'].innerHTML = getHelpHtml(newLang);
-  }
-  
-  // Update About panel if visible and sync the select
-  if (panels['About']) {
-    const aboutSelect = panels['About'].querySelector('#aboutLang');
-    if (aboutSelect) aboutSelect.value = newLang;
-    const aboutContent = panels['About'].querySelector('#aboutContent');
-    if (aboutContent) aboutContent.innerHTML = getAboutHtml(newLang);
-  }
-};
-navBar.appendChild(langBtn);
+
+// Close dropdown when clicking outside
+document.addEventListener('click', () => {
+  langDropdown.style.display = 'none';
+});
+
+langContainer.appendChild(langBtn);
+langContainer.appendChild(langDropdown);
+navBar.appendChild(langContainer);
 
 
 
@@ -1268,10 +1338,16 @@ import { showModal } from './ui/modal.js';
 // Home UI'yi kur (obje zaten oluşturuldu)
 buildHomeUI();
 // allow language selection and modal viewing
+const languageOptions = languages.map(l => 
+  `<option value="${l.code}">${l.flag} ${l.name}</option>`
+).join('');
+
 panels['About'].innerHTML = `
   <div id="aboutLocale">
     <label>Language: </label>
-    <select id="aboutLang"><option value="en">English</option><option value="tr">Türkçe</option></select>
+    <select id="aboutLang" style="padding:4px 8px; border-radius:4px; background:rgba(40,40,50,0.8); color:#fff; border:1px solid rgba(100,100,120,0.5);">
+      ${languageOptions}
+    </select>
   </div>
   <div style="margin-top:8px; font-size:11px; color:#7da6cc;">
     <strong>Version:</strong> 1.1.3 — ${new Date().toISOString().split('T')[0]}
@@ -1284,12 +1360,7 @@ panels['About'].querySelector('#aboutLang').value = getCurrentLanguage();
 
 // wire events
 panels['About'].querySelector('#aboutLang').addEventListener('change', (e) => {
-  const v = e.target.value;
-  panels['About'].querySelector('#aboutContent').innerHTML = getAboutHtml(v);
-  // Sync with navbar button
-  setLanguage(v);
-  const langBtn = document.querySelector('button[data-lang-selector]');
-  if (langBtn) langBtn.textContent = v.toUpperCase();
+  updateLanguage(e.target.value);
 });
 panels['About'].querySelector('#aboutMore').addEventListener('click', (e) => {
   e.preventDefault();
