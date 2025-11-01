@@ -1,3 +1,16 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+# [1.1.4] - 2025-11-01
+### Changed
+- Scene panel and preset management logic extracted to `src/ui/scenePanel.js` for better code organization.
+- Modularized defaultPresets, loadUserPresets, saveUserPresets, and createPresetThumbnail functions.
+- Presets now save and restore position (posX, posY, posZ) and rotation (rotX, rotY, rotZ) values.
+
+### Fixed
+- Code structure improved with cleaner separation of concerns.
+
 # [1.1.2] - 2025-09-28
 ### Added
 - Glow (hover/press) visual feedback for 6-axis gizmo buttons (desktop + touch).
