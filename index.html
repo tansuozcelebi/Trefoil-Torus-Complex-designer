@@ -49,6 +49,36 @@
       html,body{height:100%;margin:0;background:#0b0f14;}
       canvas{display:block;width:100%;height:100%;}
       #overlay{position:fixed;left:12px;top:12px;color:#cfe; font-family: Inter, system-ui, sans-serif}
+      
+      /* Mobile responsive styles */
+      @media (max-width: 768px) {
+        /* Adjust touch gizmo size for mobile */
+        .touch-gizmo {
+          transform: scale(0.8) !important;
+        }
+        
+        /* Ensure panels don't overflow on mobile */
+        body > div[style*="position: fixed"] {
+          max-width: calc(100vw - 24px) !important;
+        }
+        
+        /* Better touch targets */
+        button {
+          min-height: 44px;
+        }
+      }
+      
+      @media (max-width: 480px) {
+        /* Even smaller screens */
+        .touch-gizmo {
+          transform: scale(0.7) !important;
+        }
+        
+        /* Smaller font for active info */
+        #overlay {
+          font-size: 10px;
+        }
+      }
     </style>
   </head>
   <body>

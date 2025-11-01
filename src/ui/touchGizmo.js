@@ -23,6 +23,7 @@ export function setupTouchGizmo(params, saveParamsToActive, applyTransform, gui)
   function buildTouchGizmo(){
     if (gizmoRoot) return;
     gizmoRoot = document.createElement('div');
+    gizmoRoot.className = 'touch-gizmo';
     gizmoRoot.style.position = 'fixed';
     // restore saved position if any
     const savedPos = JSON.parse(localStorage.getItem('tc_gizmo_pos')||'null');

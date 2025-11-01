@@ -1,5 +1,3 @@
-// Keyboard controls moved to controls/keyboard.js and initialized later
-// ...imports...
 import * as THREE from 'three';
 import { createRendererAndScene } from './core/scene.js';
 import { createBaseGround } from './core/ground.js';
@@ -9,7 +7,7 @@ import { tabs as TabsConfig } from './ui/tabs';
 import { setupGUI } from './ui/guiMenu.js';
 import { setupScenePanel } from './ui/scenePanel.js';
 import { setupTouchGizmo } from './ui/touchGizmo.js';
-import { getHelpHtml, getCurrentLanguage, setLanguage, languages } from './ui/help.js';
+import { getHelpHtml, getCurrentLanguage, setLanguage, languages, getTabLabel } from './ui/help.js';
 import { getAboutHtml } from './ui/about.js';
 import { TrefoilCurve } from './objects/trefoil.js';
 import { SeptafoilCurve } from './objects/septafoil.js';
@@ -43,6 +41,7 @@ const navBar = document.createElement('div');
 navBar.style.position = 'fixed';
 navBar.style.top = '12px';
 navBar.style.left = '12px';
+navBar.style.right = '12px';
 navBar.style.transform = 'none';
 navBar.style.zIndex = '1000';
 navBar.style.display = 'flex';
@@ -52,14 +51,127 @@ navBar.style.background = 'rgba(20,20,22,0.7)';
 navBar.style.padding = '6px 10px';
 navBar.style.borderRadius = '8px';
 navBar.style.backdropFilter = 'blur(6px)';
+navBar.style.flexWrap = 'wrap';
+navBar.style.maxWidth = 'calc(100vw - 24px)';
 document.body.appendChild(navBar);
+
+// Hamburger menu button for mobile
+const hamburgerBtn = document.createElement('button');
+hamburgerBtn.innerHTML = '☰';
+hamburgerBtn.style.display = 'none';
+hamburgerBtn.style.padding = '8px 12px';
+hamburgerBtn.style.border = 'none';
+hamburgerBtn.style.background = 'rgba(35,120,200,0.3)';
+hamburgerBtn.style.color = '#fff';
+hamburgerBtn.style.cursor = 'pointer';
+hamburgerBtn.style.borderRadius = '6px';
+hamburgerBtn.style.fontSize = '18px';
+hamburgerBtn.style.lineHeight = '1';
+hamburgerBtn.style.transition = 'background 0.2s ease, transform 0.2s ease';
+hamburgerBtn.style.minHeight = '44px';
+hamburgerBtn.style.minWidth = '44px';
+hamburgerBtn.addEventListener('mouseenter', () => {
+  hamburgerBtn.style.background = 'rgba(35,120,200,0.5)';
+});
+hamburgerBtn.addEventListener('mouseleave', () => {
+  hamburgerBtn.style.background = 'rgba(35,120,200,0.3)';
+});
+hamburgerBtn.addEventListener('click', () => {
+  const isOpen = navBar.dataset.mobileOpen === 'true';
+  navBar.dataset.mobileOpen = isOpen ? 'false' : 'true';
+  hamburgerBtn.innerHTML = isOpen ? '☰' : '✕';
+  hamburgerBtn.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(90deg)';
+  updateMobileMenu();
+});
+navBar.appendChild(hamburgerBtn);
+
+// Container for tab buttons (will be hidden/shown on mobile)
+const tabsContainer = document.createElement('div');
+tabsContainer.style.display = 'flex';
+tabsContainer.style.alignItems = 'center';
+tabsContainer.style.gap = '6px';
+tabsContainer.style.flex = '1';
+tabsContainer.style.flexWrap = 'wrap';
+navBar.appendChild(tabsContainer);
 
 // area to show active object info
 const activeInfo = document.createElement('div');
 activeInfo.style.marginLeft = '12px';
 activeInfo.style.color = '#3fa7ff'; // blue
 activeInfo.style.fontSize = '12px';
+activeInfo.style.flexShrink = '0';
+activeInfo.style.order = '-1'; // Show before hamburger on mobile
 navBar.appendChild(activeInfo);
+
+// Mobile menu update function
+function updateMobileMenu() {
+  const isMobile = window.innerWidth <= 768;
+  const isOpen = navBar.dataset.mobileOpen === 'true';
+  
+  hamburgerBtn.style.display = isMobile ? 'block' : 'none';
+  
+  if (isMobile) {
+    // Hide active info on mobile when menu is open
+    activeInfo.style.display = isOpen ? 'none' : 'block';
+    activeInfo.style.fontSize = '10px';
+    activeInfo.style.marginLeft = '6px';
+    
+    if (isOpen) {
+      tabsContainer.style.display = 'flex';
+      tabsContainer.style.flexDirection = 'column';
+      tabsContainer.style.width = '100%';
+      tabsContainer.style.marginTop = '8px';
+      navBar.style.maxHeight = '80vh';
+      navBar.style.overflowY = 'auto';
+      
+      // Make all tabs full-width on mobile
+      document.querySelectorAll('button[data-tab]').forEach(btn => {
+        btn.style.width = '100%';
+        btn.style.textAlign = 'left';
+        btn.style.justifyContent = 'flex-start';
+      });
+      
+      // Hide spacer on mobile
+      spacer.style.display = 'none';
+      
+      // Full width language selector on mobile
+      langContainer.style.width = '100%';
+      langBtn.style.width = '100%';
+    } else {
+      tabsContainer.style.display = 'none';
+    }
+  } else {
+    activeInfo.style.display = 'block';
+    activeInfo.style.fontSize = '12px';
+    activeInfo.style.marginLeft = '12px';
+    
+    tabsContainer.style.display = 'flex';
+    tabsContainer.style.flexDirection = 'row';
+    tabsContainer.style.width = 'auto';
+    tabsContainer.style.marginTop = '0';
+    navBar.style.maxHeight = 'none';
+    navBar.style.overflowY = 'visible';
+    
+    // Reset tab button styles for desktop
+    document.querySelectorAll('button[data-tab]').forEach(btn => {
+      btn.style.width = 'auto';
+      btn.style.textAlign = 'center';
+      btn.style.justifyContent = 'center';
+    });
+    
+    // Show spacer on desktop
+    spacer.style.display = 'block';
+    
+    // Reset language selector on desktop
+    langContainer.style.width = 'auto';
+    langBtn.style.width = 'auto';
+  }
+}
+
+// Initialize mobile menu state
+navBar.dataset.mobileOpen = 'false';
+window.addEventListener('resize', updateMobileMenu);
+updateMobileMenu();
 
 // version display moved to bottom-left stats overlay
 
@@ -75,6 +187,7 @@ function makeTab(label){
   t.style.position = 'relative';
   t.style.transition = 'background 0.25s ease, box-shadow 0.3s ease, transform 0.18s ease';
   t.style.boxShadow = '0 0 0px rgba(0,180,255,0)';
+  t.style.whiteSpace = 'nowrap';
   t.addEventListener('mouseenter', () => {
     t.style.background = 'rgba(35,120,200,0.18)';
     t.style.boxShadow = '0 0 8px rgba(0,170,255,0.55), 0 0 16px rgba(0,120,255,0.35)';
@@ -93,10 +206,19 @@ function makeTab(label){
 
 const panels = {};
 function addTabButton(name){
-  const btn = makeTab(name);
+  const currentLang = getCurrentLanguage();
+  const btn = makeTab(getTabLabel(name, currentLang));
   btn.dataset.tab = name;
-  btn.addEventListener('click', () => showTab(name));
-  navBar.appendChild(btn);
+  btn.addEventListener('click', () => {
+    showTab(name);
+    // Close mobile menu after selection
+    if (window.innerWidth <= 768) {
+      navBar.dataset.mobileOpen = 'false';
+      hamburgerBtn.innerHTML = '☰';
+      updateMobileMenu();
+    }
+  });
+  tabsContainer.appendChild(btn);
   const panel = document.createElement('div');
   panel.style.position = 'fixed';
   // position will be computed dynamically under the triggering button in showTab
@@ -121,7 +243,7 @@ function addTabButton(name){
 
 // Build left tabs, spacer, and right-aligned Object
 TabsConfig.left.forEach(addTabButton);
-const spacer = document.createElement('div'); spacer.style.flex = '1'; navBar.appendChild(spacer);
+const spacer = document.createElement('div'); spacer.style.flex = '1'; tabsContainer.appendChild(spacer);
 TabsConfig.right.forEach(addTabButton);
 TabsConfig.tail.forEach(addTabButton);
 
@@ -135,6 +257,12 @@ function updateLanguage(newLang) {
   if (langBtn && langData) {
     langBtn.innerHTML = `${langData.flag} ${newLang.toUpperCase()}`;
   }
+  
+  // Update all tab labels
+  document.querySelectorAll('button[data-tab]').forEach(btn => {
+    const tabName = btn.dataset.tab;
+    btn.textContent = getTabLabel(tabName, newLang);
+  });
   
   // Update Help panel if it exists
   if (panels['Help']) {
@@ -237,7 +365,7 @@ document.addEventListener('click', () => {
 
 langContainer.appendChild(langBtn);
 langContainer.appendChild(langDropdown);
-navBar.appendChild(langContainer);
+tabsContainer.appendChild(langContainer);
 
 
 

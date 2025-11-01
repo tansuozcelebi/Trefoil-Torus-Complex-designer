@@ -3,7 +3,19 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  server: { port: 5173 },
+  server: {
+    host: true, // listen on all addresses (useful for LAN/mobile tests)
+    port: 5173,
+    strictPort: true,
+    hmr: {
+      protocol: 'ws',
+      host: 'localhost',
+      port: 5173,
+      clientPort: 5173,
+      // If behind a reverse proxy, uncomment the next line to force base path
+      // path: '/'
+    }
+  },
   build: {
     rollupOptions: {
       output: {
