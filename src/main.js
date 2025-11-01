@@ -131,12 +131,18 @@ function updateMobileMenu() {
         btn.style.justifyContent = 'flex-start';
       });
       
-      // Hide spacer on mobile
-      spacer.style.display = 'none';
+      // Hide spacer on mobile (check if exists)
+      if (typeof spacer !== 'undefined') {
+        spacer.style.display = 'none';
+      }
       
-      // Full width language selector on mobile
-      langContainer.style.width = '100%';
-      langBtn.style.width = '100%';
+      // Full width language selector on mobile (check if exists)
+      if (typeof langContainer !== 'undefined') {
+        langContainer.style.width = '100%';
+      }
+      if (typeof langBtn !== 'undefined') {
+        langBtn.style.width = '100%';
+      }
     } else {
       tabsContainer.style.display = 'none';
     }
@@ -159,19 +165,20 @@ function updateMobileMenu() {
       btn.style.justifyContent = 'center';
     });
     
-    // Show spacer on desktop
-    spacer.style.display = 'block';
+    // Show spacer on desktop (check if exists)
+    if (typeof spacer !== 'undefined') {
+      spacer.style.display = 'block';
+    }
     
-    // Reset language selector on desktop
-    langContainer.style.width = 'auto';
-    langBtn.style.width = 'auto';
+    // Reset language selector on desktop (check if exists)
+    if (typeof langContainer !== 'undefined') {
+      langContainer.style.width = 'auto';
+    }
+    if (typeof langBtn !== 'undefined') {
+      langBtn.style.width = 'auto';
+    }
   }
 }
-
-// Initialize mobile menu state
-navBar.dataset.mobileOpen = 'false';
-window.addEventListener('resize', updateMobileMenu);
-updateMobileMenu();
 
 // version display moved to bottom-left stats overlay
 
@@ -367,6 +374,10 @@ langContainer.appendChild(langBtn);
 langContainer.appendChild(langDropdown);
 tabsContainer.appendChild(langContainer);
 
+// Initialize mobile menu state (after all elements created)
+navBar.dataset.mobileOpen = 'false';
+window.addEventListener('resize', updateMobileMenu);
+updateMobileMenu();
 
 
 
