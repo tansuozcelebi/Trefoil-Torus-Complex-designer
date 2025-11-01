@@ -11,7 +11,7 @@ export default function NavBar({ onSelect }: NavProps){
   const rightTabs = TabsConfig.right;
   const tailTabs = TabsConfig.tail;
   const Btn = ({ t }: { t: string }) => (
-    <button key={t} className="tc-btn" onClick={() => onSelect && onSelect(t)}>
+    <button key={t} className="tc-btn" data-tab={t} onClick={() => onSelect && onSelect(t)}>
       {t}
     </button>
   );

@@ -1,8 +1,10 @@
+// Prefer a local bundled photo; fall back to public avatars if missing
+const authorPhoto = new URL('../assets/author.jpg', import.meta.url).href;
 const about_en = `
 <h2>Trefoil Torus Complex Designer</h2>
 <p>Version 1.1.3 — A small experimental designer built with AI only</p>
 <div style="display:flex; align-items:center; gap:12px; margin:12px 0;">
-  <img src="https://unavatar.io/linkedin/tansuozcelebi" alt="LinkedIn Profile Photo" width="96" height="96" style="border-radius:50%; object-fit:cover; box-shadow:0 0 12px rgba(0,170,255,0.35);"/>
+	<img src="${authorPhoto}" alt="Profile Photo" width="96" height="96" style="border-radius:50%; object-fit:cover; box-shadow:0 0 12px rgba(0,170,255,0.35);" onerror="this.onerror=null; this.src='https://unavatar.io/github/tansuozcelebi';"/>
   <div>
     <h3 style="margin:0 0 6px 0;">Author: Tansu Ozcelebi (2025)</h3>
     <a href="https://www.linkedin.com/in/tansuozcelebi/" target="_blank" rel="noopener">LinkedIn Profile</a>
@@ -25,7 +27,7 @@ const about_tr = `
 <h2>Trefoil Torus Complex Designer</h2>
 <p>Sürüm 1.1.3 — Three.js ve Vite ile yapılmış küçük bir deneysel tasarım aracı.</p>
 <div style="display:flex; align-items:center; gap:12px; margin:12px 0;">
-	<img src="https://unavatar.io/linkedin/tansuozcelebi" alt="LinkedIn Profil Fotoğrafı" width="96" height="96" style="border-radius:50%; object-fit:cover; box-shadow:0 0 12px rgba(0,170,255,0.35);"/>
+	<img src="${authorPhoto}" alt="Profil Fotoğrafı" width="96" height="96" style="border-radius:50%; object-fit:cover; box-shadow:0 0 12px rgba(0,170,255,0.35);" onerror="this.onerror=null; this.src='https://unavatar.io/github/tansuozcelebi';"/>
 	<div>
 		<h3 style="margin:0 0 6px 0;">Yazar: Tansu Ozcelebi (2025)</h3>
 		<a href="https://www.linkedin.com/in/tansuozcelebi/" target="_blank" rel="noopener">LinkedIn Profili</a>

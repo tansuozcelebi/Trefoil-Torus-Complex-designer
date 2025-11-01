@@ -90,12 +90,12 @@ function makeTab(label){
 const panels = {};
 function addTabButton(name){
   const btn = makeTab(name);
+  btn.dataset.tab = name;
   btn.addEventListener('click', () => showTab(name));
   navBar.appendChild(btn);
   const panel = document.createElement('div');
   panel.style.position = 'fixed';
-  panel.style.top = '56px';
-  panel.style.left = '12px';
+  // position will be computed dynamically under the triggering button in showTab
   panel.style.transform = 'translateY(-8px) scale(0.98)';
   panel.style.zIndex = '999';
   panel.style.background = 'rgba(15,15,20,0.65)';
@@ -146,13 +146,40 @@ function setPanelVisible(key, visible){
 
 function showTab(name){
   Object.keys(panels).forEach(k => setPanelVisible(k, false));
-  if (panels[name]) setPanelVisible(name, true);
+  const panel = panels[name];
+  if (panel){
+    // Try to locate the triggering button (works for both vanilla and React nav if data-tab is present)
+    const triggerBtn = document.querySelector(`button[data-tab="${name}"]`) || Array.from(document.querySelectorAll('button')).find(b => b.textContent === name);
+    if (triggerBtn){
+      const rect = triggerBtn.getBoundingClientRect();
+      const margin = 8; // small gap under the button
+      // Set panel width to at least 320px, but allow it to shrink if near the right edge
+      const minW = 320;
+      panel.style.minWidth = minW + 'px';
+      // Compute left/top based on viewport coordinates (fixed positioning)
+      let left = rect.left;
+      let top = rect.bottom + margin;
+      // Adjust if overflowing to the right
+      // Temporarily display to measure width if needed
+      const prevDisplay = panel.style.display;
+      if (prevDisplay === 'none') panel.style.display = 'block';
+      const pw = Math.max(panel.offsetWidth || 0, minW);
+      if (prevDisplay === 'none') panel.style.display = 'none';
+      if (left + pw > window.innerWidth - 12){
+        left = Math.max(12, window.innerWidth - pw - 12);
+      }
+      panel.style.left = left + 'px';
+      panel.style.top = top + 'px';
+    }
+    setPanelVisible(name, true);
+  }
   // If Object tab is selected, ensure Controls GUI is visible
   if (name === 'Object' && typeof window.showControlsGUI === 'function') {
     window.showControlsGUI();
   }
   // update active tab glow
-  Array.from(navBar.querySelectorAll('button')).forEach(b => {
+  // first clear across all nav buttons that carry data-tab
+  Array.from(document.querySelectorAll('button[data-tab]')).forEach(b => {
     if (b.textContent === name){
       b.dataset.active = '1';
       b.style.background = 'rgba(35,120,200,0.28)';
@@ -188,6 +215,14 @@ scenePanel.innerHTML = `
   <div style="margin-top:10px">
     <label><input type="checkbox" id="toggleHelpers" /> Show Helpers</label>
   </div>
+  <div style="margin-top:16px; display:flex; align-items:center; justify-content:space-between; gap:8px;">
+    <strong>Object Presets</strong>
+    <div>
+      <input id="scenePresetName" placeholder="Preset name" style="padding:4px 6px; border-radius:4px; border:1px solid #444; background:#111; color:#fff; width:160px;" />
+      <button id="sceneSavePresetBtn" style="padding:6px 10px; border:none; border-radius:6px; background:#2a2a2e; color:#fff; cursor:pointer;">Save current</button>
+    </div>
+  </div>
+  <div id="scenePresetRow" style="margin-top:10px; display:flex; gap:10px; overflow-x:auto; padding-bottom:6px;"></div>
 `;
 // wire simple interactions
 scenePanel.querySelector('#scenePreset').addEventListener('change', (e) => {
@@ -215,6 +250,47 @@ scenePanel.querySelector('#toggleHelpers').addEventListener('change', (e) => {
   grid.visible = checked;
   shadowReceiver.visible = checked;
 });
+
+// Scene panel: build object presets grid moved from Home
+async function buildScenePresets(){
+  const row = scenePanel.querySelector('#scenePresetRow');
+  if (!row) return;
+  row.innerHTML = '';
+  const userPresets = loadUserPresets();
+  const allPresets = [...defaultPresets, ...userPresets];
+  for (const p of allPresets){
+    const card = document.createElement('div');
+    card.style.minWidth = '180px';
+    card.style.background = 'rgba(255,255,255,0.03)';
+    card.style.border = '1px solid rgba(255,255,255,0.1)';
+    card.style.borderRadius = '8px';
+    card.style.padding = '8px';
+    const img = document.createElement('img');
+    img.style.width = '100%'; img.style.aspectRatio = '4/3'; img.style.objectFit = 'cover'; img.style.borderRadius = '6px';
+    img.src = await createPresetThumbnail(p);
+    const title = document.createElement('div');
+    title.textContent = p.name; title.style.marginTop = '6px'; title.style.fontWeight = '600';
+    const desc = document.createElement('div'); desc.textContent = p.desc || ''; desc.style.opacity = '0.8'; desc.style.fontSize = '12px';
+    const addBtn = document.createElement('button'); addBtn.textContent = 'Add';
+    addBtn.style.marginTop = '8px'; addBtn.style.width = '100%';
+    addBtn.style.padding = '6px 10px'; addBtn.style.border = 'none'; addBtn.style.borderRadius = '6px'; addBtn.style.background = '#2a2a2e'; addBtn.style.color = '#fff';
+    addBtn.onclick = () => addObjectFromPreset(p);
+    card.appendChild(img); card.appendChild(title); card.appendChild(desc); card.appendChild(addBtn);
+    row.appendChild(card);
+  }
+}
+
+scenePanel.querySelector('#sceneSavePresetBtn').addEventListener('click', async () => {
+  const name = scenePanel.querySelector('#scenePresetName').value.trim() || `Preset ${Date.now()}`;
+  const rec = getActiveRecord(); if (!rec) return;
+  const newPreset = { key: 'user-' + Date.now(), name, desc: '', type: rec.params.objectType, params: { a: rec.params.a, b: rec.params.b, p: rec.params.p, q: rec.params.q, tubeRadius: rec.params.tubeRadius, uSegments: rec.params.uSegments, vSegments: rec.params.vSegments } };
+  if (rec.params.magnitude !== undefined) newPreset.params.magnitude = rec.params.magnitude;
+  const arr = loadUserPresets(); arr.push(newPreset); saveUserPresets(arr);
+  await buildScenePresets();
+});
+
+// Initial build
+buildScenePresets();
 
 // Stats overlay (bottom-left): vertex & face counts
 const APP_VERSION = 'v1.1.3';
@@ -540,55 +616,11 @@ function createPresetThumbnail(preset){
 function buildHomeUI(){
   const home = panels['Home'];
   if (!home) return;
-  const userPresets = loadUserPresets();
   home.innerHTML = `
-    <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
-      <strong>Presets</strong>
-      <div>
-        <input id="presetName" placeholder="Preset name" style="padding:4px 6px; border-radius:4px; border:1px solid #444; background:#111; color:#fff; width:160px;" />
-        <button id="savePresetBtn" style="padding:6px 10px; border:none; border-radius:6px; background:#2a2a2e; color:#fff; cursor:pointer;">Save current</button>
-      </div>
-    </div>
-    <div id="presetRow" style="margin-top:10px; display:flex; gap:10px; overflow-x:auto; padding-bottom:6px;">
-    </div>
-    <div style="margin-top:14px;"><strong>Objects</strong></div>
+    <div style="margin-top:4px;"><strong>Objects</strong></div>
     <div id="objectsList" style="margin-top:6px; display:flex; flex-direction:column; gap:6px;"></div>
+    <div style="margin-top:10px; font-size:12px; opacity:0.85;">Presets taşındı: Scene menüsü altından erişebilirsiniz.</div>
   `;
-  const row = home.querySelector('#presetRow');
-  const allPresets = [...defaultPresets, ...userPresets];
-  allPresets.forEach(async (p) => {
-    const card = document.createElement('div');
-    card.style.minWidth = '180px';
-    card.style.background = 'rgba(255,255,255,0.03)';
-    card.style.border = '1px solid rgba(255,255,255,0.1)';
-    card.style.borderRadius = '8px';
-    card.style.padding = '8px';
-    const img = document.createElement('img');
-    img.style.width = '100%'; img.style.aspectRatio = '4/3'; img.style.objectFit = 'cover'; img.style.borderRadius = '6px';
-    img.src = await createPresetThumbnail(p);
-    const title = document.createElement('div');
-    title.textContent = p.name;
-    title.style.marginTop = '6px'; title.style.fontWeight = '600';
-    const desc = document.createElement('div'); desc.textContent = p.desc || ''; desc.style.opacity = '0.8'; desc.style.fontSize = '12px';
-    const addBtn = document.createElement('button');
-    addBtn.textContent = 'Add';
-    addBtn.style.marginTop = '8px'; addBtn.style.width = '100%';
-    addBtn.style.padding = '6px 10px'; addBtn.style.border = 'none'; addBtn.style.borderRadius = '6px'; addBtn.style.background = '#2a2a2e'; addBtn.style.color = '#fff';
-    addBtn.onclick = () => addObjectFromPreset(p);
-    card.appendChild(img); card.appendChild(title); card.appendChild(desc); card.appendChild(addBtn);
-    row.appendChild(card);
-  });
-
-  home.querySelector('#savePresetBtn').addEventListener('click', () => {
-    const name = home.querySelector('#presetName').value.trim() || `Preset ${Date.now()}`;
-    const rec = getActiveRecord();
-    if (!rec) return;
-    const newPreset = { key: 'user-' + Date.now(), name, desc: '', type: rec.params.objectType, params: { a: rec.params.a, b: rec.params.b, p: rec.params.p, q: rec.params.q, tubeRadius: rec.params.tubeRadius, uSegments: rec.params.uSegments, vSegments: rec.params.vSegments } };
-      if (rec.params.magnitude !== undefined) newPreset.params.magnitude = rec.params.magnitude;
-    const arr = loadUserPresets(); arr.push(newPreset); saveUserPresets(arr);
-    buildHomeUI();
-  });
-
   refreshObjectsList();
 }
 
