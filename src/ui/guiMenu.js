@@ -2,7 +2,7 @@
 // Contains the GUI menu setup for the app
 import { GUI } from 'dat.gui';
 
-export function setupGUI(params, rebuild, updateMaterial, toggleReflection, toggleWireframe, applyTransform, knotMaterial, wireframeMesh, spot, ambient, reflector, saveParams) {
+export function setupGUI(params, rebuild, updateMaterial, toggleReflection, toggleWireframe, applyTransform, knotMaterial, wireframeMesh, spot, ambient, reflector, saveParams, toggleUCSGizmo) {
   const gui = new GUI({ width: 320 });
 
   // Geometry folder
@@ -68,6 +68,9 @@ export function setupGUI(params, rebuild, updateMaterial, toggleReflection, togg
   sixFolder.add(params, 'rotX', -180, 180, 0.1).name('rotX').onChange(() => { saveParams && saveParams(); applyTransform(); });
   sixFolder.add(params, 'rotY', -180, 180, 0.1).name('rotY').onChange(() => { saveParams && saveParams(); applyTransform(); });
   sixFolder.add(params, 'rotZ', -180, 180, 0.1).name('rotZ').onChange(() => { saveParams && saveParams(); applyTransform(); });
+  // UCS Gizmo toggle
+  if (params.showUCSGizmo === undefined) params.showUCSGizmo = true;
+  sixFolder.add(params, 'showUCSGizmo').name('UCS Gizmo').onChange((v) => { saveParams && saveParams(); if (toggleUCSGizmo) toggleUCSGizmo(v); });
   sixFolder.open();
 
   return { gui, geomFolder, matFolder, lightsFolder, viewFolder, sixFolder };

@@ -410,7 +410,8 @@ const params = {
   autoRotate: false,
   rotationSpeed: 0.12,
   texture: 'none',
-  mathWireframeColor: '#000000'
+  mathWireframeColor: '#000000',
+  showUCSGizmo: true
 };
 
 // Multi-object: in-memory list and helpers
@@ -702,8 +703,31 @@ let wireframeMesh = null;
 let knotGeometry = null;
 let knotMaterial = null;
 
+// UCS Gizmo (corner axes) overlay
+let ucsScene = null;
+let ucsCamera = null;
+let ucsAxes = null;
+const UCS_SIZE = 96; // pixels
+
+function initUCS(){
+  if (ucsScene) return;
+  ucsScene = new THREE.Scene();
+  ucsCamera = new THREE.PerspectiveCamera(50, 1, 0.1, 10);
+  ucsCamera.position.set(0,0,3);
+  ucsAxes = new THREE.AxesHelper(1.2);
+  // brighten axes lines a bit
+  ucsAxes.material.depthTest = false;
+  ucsAxes.renderOrder = 999;
+  ucsScene.add(ucsAxes);
+}
+
+function toggleUCSGizmo(v){
+  params.showUCSGizmo = v;
+  if (v && !ucsScene) initUCS();
+}
+
 // Setup GUI menu (objectType at the top)
-const { gui, viewFolder } = setupGUI(params, rebuild, updateMaterial, toggleReflection, toggleWireframe, applyTransform, knotMaterial, wireframeMesh, spot, ambient, reflector, saveParamsToActive);
+const { gui, viewFolder } = setupGUI(params, rebuild, updateMaterial, toggleReflection, toggleWireframe, applyTransform, knotMaterial, wireframeMesh, spot, ambient, reflector, saveParamsToActive, toggleUCSGizmo);
 
 // Export folder (if needed)
 // const exportFolder = gui.addFolder('Export');
@@ -1258,6 +1282,25 @@ function animate(){
   }
 
   renderer.render(scene, camera);
+
+  // Render UCS corner gizmo
+  if (params.showUCSGizmo){
+    if (!ucsScene) initUCS();
+    // Align UCS camera to main camera orientation
+    ucsCamera.quaternion.copy(camera.quaternion);
+    // prepare viewport/scissor in bottom-left corner
+    const size = UCS_SIZE;
+    const px = 10, py = 10;
+    renderer.autoClear = false;
+    renderer.clearDepth();
+    renderer.setScissorTest(true);
+    renderer.setScissor(px, py, size, size);
+    renderer.setViewport(px, py, size, size);
+    renderer.render(ucsScene, ucsCamera);
+    renderer.setScissorTest(false);
+    renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
+    renderer.autoClear = true;
+  }
   // update stats per-frame to reflect any realtime changes
   updateStats();
 }
