@@ -25,26 +25,26 @@ export const languages = [
 
 // Tab translations
 export const tabTranslations = {
-  en: { Home: 'Home', Environment: 'Environment', Scene: 'Scene', Object: 'Object', About: 'About', Help: 'Help' },
-  tr: { Home: 'Ana Sayfa', Environment: 'Ortam', Scene: 'Sahne', Object: 'Nesne', About: 'Hakkında', Help: 'Yardım' },
-  es: { Home: 'Inicio', Environment: 'Entorno', Scene: 'Escena', Object: 'Objeto', About: 'Acerca de', Help: 'Ayuda' },
-  fr: { Home: 'Accueil', Environment: 'Environnement', Scene: 'Scène', Object: 'Objet', About: 'À propos', Help: 'Aide' },
-  de: { Home: 'Startseite', Environment: 'Umgebung', Scene: 'Szene', Object: 'Objekt', About: 'Über', Help: 'Hilfe' },
-  it: { Home: 'Home', Environment: 'Ambiente', Scene: 'Scena', Object: 'Oggetto', About: 'Informazioni', Help: 'Aiuto' },
-  pt: { Home: 'Início', Environment: 'Ambiente', Scene: 'Cena', Object: 'Objeto', About: 'Sobre', Help: 'Ajuda' },
-  ru: { Home: 'Главная', Environment: 'Окружение', Scene: 'Сцена', Object: 'Объект', About: 'О программе', Help: 'Справка' },
-  zh: { Home: '主页', Environment: '环境', Scene: '场景', Object: '对象', About: '关于', Help: '帮助' },
-  ja: { Home: 'ホーム', Environment: '環境', Scene: 'シーン', Object: 'オブジェクト', About: '概要', Help: 'ヘルプ' },
-  ko: { Home: '홈', Environment: '환경', Scene: '장면', Object: '객체', About: '정보', Help: '도움말' },
-  ar: { Home: 'الرئيسية', Environment: 'البيئة', Scene: 'المشهد', Object: 'كائن', About: 'حول', Help: 'مساعدة' },
-  hi: { Home: 'होम', Environment: 'वातावरण', Scene: 'दृश्य', Object: 'वस्तु', About: 'के बारे में', Help: 'सहायता' },
-  nl: { Home: 'Home', Environment: 'Omgeving', Scene: 'Scène', Object: 'Object', About: 'Over', Help: 'Help' },
-  pl: { Home: 'Strona główna', Environment: 'Środowisko', Scene: 'Scena', Object: 'Obiekt', About: 'O programie', Help: 'Pomoc' },
-  sv: { Home: 'Hem', Environment: 'Miljö', Scene: 'Scen', Object: 'Objekt', About: 'Om', Help: 'Hjälp' },
-  no: { Home: 'Hjem', Environment: 'Miljø', Scene: 'Scene', Object: 'Objekt', About: 'Om', Help: 'Hjelp' },
-  da: { Home: 'Hjem', Environment: 'Miljø', Scene: 'Scene', Object: 'Objekt', About: 'Om', Help: 'Hjælp' },
-  fi: { Home: 'Koti', Environment: 'Ympäristö', Scene: 'Kohtaus', Object: 'Objekti', About: 'Tietoja', Help: 'Ohje' },
-  el: { Home: 'Αρχική', Environment: 'Περιβάλλον', Scene: 'Σκηνή', Object: 'Αντικείμενο', About: 'Σχετικά', Help: 'Βοήθεια' }
+  en: { Home: 'Home', Environment: 'Environment', Scene: 'Scene', Object: 'Object', Export: 'Export', About: 'About', Help: 'Help' },
+  tr: { Home: 'Ana Sayfa', Environment: 'Ortam', Scene: 'Sahne', Object: 'Nesne', Export: 'Dışa Aktar', About: 'Hakkında', Help: 'Yardım' },
+  es: { Home: 'Inicio', Environment: 'Entorno', Scene: 'Escena', Object: 'Objeto', Export: 'Exportar', About: 'Acerca de', Help: 'Ayuda' },
+  fr: { Home: 'Accueil', Environment: 'Environnement', Scene: 'Scène', Object: 'Objet', Export: 'Exporter', About: 'À propos', Help: 'Aide' },
+  de: { Home: 'Startseite', Environment: 'Umgebung', Scene: 'Szene', Object: 'Objekt', Export: 'Exportieren', About: 'Über', Help: 'Hilfe' },
+  it: { Home: 'Home', Environment: 'Ambiente', Scene: 'Scena', Object: 'Oggetto', Export: 'Esportare', About: 'Informazioni', Help: 'Aiuto' },
+  pt: { Home: 'Início', Environment: 'Ambiente', Scene: 'Cena', Object: 'Objeto', Export: 'Exportar', About: 'Sobre', Help: 'Ajuda' },
+  ru: { Home: 'Главная', Environment: 'Окружение', Scene: 'Сцена', Object: 'Объект', Export: 'Экспорт', About: 'О программе', Help: 'Справка' },
+  zh: { Home: '主页', Environment: '环境', Scene: '场景', Object: '对象', Export: '导出', About: '关于', Help: '帮助' },
+  ja: { Home: 'ホーム', Environment: '環境', Scene: 'シーン', Object: 'オブジェクト', Export: 'エクスポート', About: '概要', Help: 'ヘルプ' },
+  ko: { Home: '홈', Environment: '환경', Scene: '장면', Object: '객체', Export: '내보내기', About: '정보', Help: '도움말' },
+  ar: { Home: 'الرئيسية', Environment: 'البيئة', Scene: 'المشهد', Object: 'كائن', Export: 'تصدير', About: 'حول', Help: 'مساعدة' },
+  hi: { Home: 'होम', Environment: 'वातावरण', Scene: 'दृश्य', Object: 'वस्तु', Export: 'निर्यात', About: 'के बारे में', Help: 'सहायता' },
+  nl: { Home: 'Home', Environment: 'Omgeving', Scene: 'Scène', Object: 'Object', Export: 'Exporteren', About: 'Over', Help: 'Help' },
+  pl: { Home: 'Strona główna', Environment: 'Środowisko', Scene: 'Scena', Object: 'Obiekt', Export: 'Eksportuj', About: 'O programie', Help: 'Pomoc' },
+  sv: { Home: 'Hem', Environment: 'Miljö', Scene: 'Scen', Object: 'Objekt', Export: 'Exportera', About: 'Om', Help: 'Hjälp' },
+  no: { Home: 'Hjem', Environment: 'Miljø', Scene: 'Scene', Object: 'Objekt', Export: 'Eksporter', About: 'Om', Help: 'Hjelp' },
+  da: { Home: 'Hjem', Environment: 'Miljø', Scene: 'Scene', Object: 'Objekt', Export: 'Eksporter', About: 'Om', Help: 'Hjælp' },
+  fi: { Home: 'Koti', Environment: 'Ympäristö', Scene: 'Kohtaus', Object: 'Objekti', Export: 'Vie', About: 'Tietoja', Help: 'Ohje' },
+  el: { Home: 'Αρχική', Environment: 'Περιβάλλον', Scene: 'Σκηνή', Object: 'Αντικείμενο', Export: 'Εξαγωγή', About: 'Σχετικά', Help: 'Βοήθεια' }
 };
 
 export function getTabLabel(tabName, lang = 'en') {
