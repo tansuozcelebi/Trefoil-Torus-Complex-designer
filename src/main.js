@@ -55,7 +55,44 @@ navBar.style.flexWrap = 'wrap';
 navBar.style.maxWidth = 'calc(100vw - 24px)';
 document.body.appendChild(navBar);
 
-// Hamburger menu button for mobile
+// Mobile sidebar menu overlay/backdrop
+const mobileOverlay = document.createElement('div');
+mobileOverlay.style.cssText = `
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1999;
+  display: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+`;
+document.body.appendChild(mobileOverlay);
+
+// Mobile sidebar menu (slides from right)
+const mobileSidebar = document.createElement('div');
+mobileSidebar.style.cssText = `
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 30%;
+  min-width: 200px;
+  max-width: 300px;
+  background: rgba(15,15,20,0.95);
+  backdrop-filter: blur(12px);
+  z-index: 2000;
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+  overflow-y: auto;
+  padding: 20px;
+  box-shadow: -4px 0 20px rgba(0,0,0,0.5);
+`;
+document.body.appendChild(mobileSidebar);
+
+// Hamburger menu button for mobile - positioned on the right
 const hamburgerBtn = document.createElement('button');
 hamburgerBtn.innerHTML = '☰';
 hamburgerBtn.style.display = 'none';
@@ -70,6 +107,7 @@ hamburgerBtn.style.lineHeight = '1';
 hamburgerBtn.style.transition = 'background 0.2s ease, transform 0.2s ease';
 hamburgerBtn.style.minHeight = '44px';
 hamburgerBtn.style.minWidth = '44px';
+hamburgerBtn.style.marginLeft = 'auto'; // Push to the right
 hamburgerBtn.addEventListener('mouseenter', () => {
   hamburgerBtn.style.background = 'rgba(35,120,200,0.5)';
 });
@@ -77,13 +115,29 @@ hamburgerBtn.addEventListener('mouseleave', () => {
   hamburgerBtn.style.background = 'rgba(35,120,200,0.3)';
 });
 hamburgerBtn.addEventListener('click', () => {
-  const isOpen = navBar.dataset.mobileOpen === 'true';
-  navBar.dataset.mobileOpen = isOpen ? 'false' : 'true';
-  hamburgerBtn.innerHTML = isOpen ? '☰' : '✕';
-  hamburgerBtn.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(90deg)';
-  updateMobileMenu();
+  const isOpen = mobileSidebar.dataset.open === 'true';
+  toggleMobileSidebar(!isOpen);
 });
 navBar.appendChild(hamburgerBtn);
+
+// Function to toggle mobile sidebar
+function toggleMobileSidebar(open) {
+  mobileSidebar.dataset.open = open ? 'true' : 'false';
+  hamburgerBtn.innerHTML = open ? '✕' : '☰';
+  
+  if (open) {
+    mobileOverlay.style.display = 'block';
+    setTimeout(() => mobileOverlay.style.opacity = '1', 10);
+    mobileSidebar.style.transform = 'translateX(0)';
+  } else {
+    mobileOverlay.style.opacity = '0';
+    mobileSidebar.style.transform = 'translateX(100%)';
+    setTimeout(() => mobileOverlay.style.display = 'none', 300);
+  }
+}
+
+// Close sidebar when clicking overlay
+mobileOverlay.addEventListener('click', () => toggleMobileSidebar(false));
 
 // Container for tab buttons (will be hidden/shown on mobile)
 const tabsContainer = document.createElement('div');
@@ -106,57 +160,28 @@ navBar.appendChild(activeInfo);
 // Mobile menu update function
 function updateMobileMenu() {
   const isMobile = window.innerWidth <= 768;
-  const isOpen = navBar.dataset.mobileOpen === 'true';
   
   hamburgerBtn.style.display = isMobile ? 'block' : 'none';
   
   if (isMobile) {
-    // Hide active info on mobile when menu is open
-    activeInfo.style.display = isOpen ? 'none' : 'block';
+    // On mobile, hide the main tabsContainer from navbar
+    tabsContainer.style.display = 'none';
+    
+    // Adjust active info for mobile
     activeInfo.style.fontSize = '10px';
     activeInfo.style.marginLeft = '6px';
-    
-    if (isOpen) {
-      tabsContainer.style.display = 'flex';
-      tabsContainer.style.flexDirection = 'column';
-      tabsContainer.style.width = '100%';
-      tabsContainer.style.marginTop = '8px';
-      navBar.style.maxHeight = '80vh';
-      navBar.style.overflowY = 'auto';
-      
-      // Make all tabs full-width on mobile
-      document.querySelectorAll('button[data-tab]').forEach(btn => {
-        btn.style.width = '100%';
-        btn.style.textAlign = 'left';
-        btn.style.justifyContent = 'flex-start';
-      });
-      
-      // Hide spacer on mobile (check if exists)
-      if (typeof spacer !== 'undefined') {
-        spacer.style.display = 'none';
-      }
-      
-      // Full width language selector on mobile (check if exists)
-      if (typeof langContainer !== 'undefined') {
-        langContainer.style.width = '100%';
-      }
-      if (typeof langBtn !== 'undefined') {
-        langBtn.style.width = '100%';
-      }
-    } else {
-      tabsContainer.style.display = 'none';
-    }
+    activeInfo.style.flex = '1'; // Take up space so hamburger is pushed right
   } else {
+    // Desktop: show tabs in navbar, hide sidebar
     activeInfo.style.display = 'block';
     activeInfo.style.fontSize = '12px';
     activeInfo.style.marginLeft = '12px';
+    activeInfo.style.flex = '0';
     
     tabsContainer.style.display = 'flex';
     tabsContainer.style.flexDirection = 'row';
     tabsContainer.style.width = 'auto';
     tabsContainer.style.marginTop = '0';
-    navBar.style.maxHeight = 'none';
-    navBar.style.overflowY = 'visible';
     
     // Reset tab button styles for desktop
     document.querySelectorAll('button[data-tab]').forEach(btn => {
@@ -165,18 +190,8 @@ function updateMobileMenu() {
       btn.style.justifyContent = 'center';
     });
     
-    // Show spacer on desktop (check if exists)
-    if (typeof spacer !== 'undefined') {
-      spacer.style.display = 'block';
-    }
-    
-    // Reset language selector on desktop (check if exists)
-    if (typeof langContainer !== 'undefined') {
-      langContainer.style.width = 'auto';
-    }
-    if (typeof langBtn !== 'undefined') {
-      langBtn.style.width = 'auto';
-    }
+    // Close mobile sidebar if open
+    toggleMobileSidebar(false);
   }
 }
 
@@ -220,12 +235,23 @@ function addTabButton(name){
     showTab(name);
     // Close mobile menu after selection
     if (window.innerWidth <= 768) {
-      navBar.dataset.mobileOpen = 'false';
-      hamburgerBtn.innerHTML = '☰';
-      updateMobileMenu();
+      toggleMobileSidebar(false);
     }
   });
   tabsContainer.appendChild(btn);
+  
+  // Also add a copy to mobile sidebar
+  const mobileBtn = makeTab(getTabLabel(name, currentLang));
+  mobileBtn.dataset.tab = name;
+  mobileBtn.style.width = '100%';
+  mobileBtn.style.marginBottom = '8px';
+  mobileBtn.style.textAlign = 'left';
+  mobileBtn.style.padding = '12px 16px';
+  mobileBtn.addEventListener('click', () => {
+    showTab(name);
+    toggleMobileSidebar(false);
+  });
+  mobileSidebar.appendChild(mobileBtn);
   const panel = document.createElement('div');
   panel.style.position = 'fixed';
   // position will be computed dynamically under the triggering button in showTab
@@ -374,8 +400,48 @@ langContainer.appendChild(langBtn);
 langContainer.appendChild(langDropdown);
 tabsContainer.appendChild(langContainer);
 
+// Add language selector to mobile sidebar
+const mobileLangSection = document.createElement('div');
+mobileLangSection.style.cssText = `
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+`;
+
+languages.forEach(lang => {
+  const item = document.createElement('button');
+  item.style.cssText = `
+    width: 100%;
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: #fff;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    margin-bottom: 4px;
+    text-align: left;
+  `;
+  item.innerHTML = `<span style="font-size:20px">${lang.flag}</span> <span>${lang.name}</span>`;
+  
+  item.onmouseenter = () => item.style.background = 'rgba(60,60,80,0.8)';
+  item.onmouseleave = () => item.style.background = 'transparent';
+  
+  item.onclick = () => {
+    updateLanguage(lang.code);
+    toggleMobileSidebar(false);
+  };
+  
+  mobileLangSection.appendChild(item);
+});
+
+mobileSidebar.appendChild(mobileLangSection);
+
 // Initialize mobile menu state (after all elements created)
-navBar.dataset.mobileOpen = 'false';
 window.addEventListener('resize', updateMobileMenu);
 updateMobileMenu();
 
