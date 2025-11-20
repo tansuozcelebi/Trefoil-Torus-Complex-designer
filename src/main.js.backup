@@ -8,6 +8,13 @@ import { setupGUI } from './ui/guiMenu.js';
 import { setupScenePanel } from './ui/scenePanel.js';
 import { setupTouchGizmo } from './ui/touchGizmo.js';
 import { getHelpHtml, getCurrentLanguage, setLanguage, languages, getTabLabel } from './ui/help.js';
+import { getAboutHtml } from './ui/about.js';
+import { setupExportPanel } from './ui/exportMenu.js';
+import { TrefoilCurve } from './objects/trefoil.js';
+import { SeptafoilCurve } from './objects/septafoil.js';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { Reflector } from 'three/examples/jsm/objects/Reflector.js';
+import { saveAs } from 'file-saver';
 
 // Raycaster ve pointer tanımı sadece renderer'dan sonra olacak
 
