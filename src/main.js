@@ -9,6 +9,7 @@ import { setupScenePanel } from './ui/scenePanel.js';
 import { setupTouchGizmo } from './ui/touchGizmo.js';
 import { getHelpHtml, getCurrentLanguage, setLanguage, languages, getTabLabel } from './ui/help.js';
 import { getAboutHtml } from './ui/about.js';
+import { setupExportPanel } from './ui/exportMenu.js';
 import { TrefoilCurve } from './objects/trefoil.js';
 import { SeptafoilCurve } from './objects/septafoil.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -408,6 +409,11 @@ function updateLanguage(newLang) {
     const aboutContent = panels['About'].querySelector('#aboutContent');
     if (aboutContent) aboutContent.innerHTML = getAboutHtml(newLang);
   }
+  
+  // Update Export panel if it exists
+  if (exportPanelAPI && exportPanelAPI.updateLanguage) {
+    exportPanelAPI.updateLanguage();
+  }
 }
 
 // Language selector dropdown with flags
@@ -627,6 +633,8 @@ const envPanel = panels['Environment'];
 const objectPanel = panels['Object'];
 // Scene panel for selecting scenes/presets
 const scenePanel = panels['Scene'];
+// Export panel for exporting 3D models
+const exportPanel = panels['Export'];
 
 // Setup Scene panel using external module (forward-declare rebuild, toggleReflection, grid, shadowReceiver)
 let scenePanelAPI;
@@ -642,6 +650,16 @@ const initScenePanel = () => {
     shadowReceiver,
     getActiveRecord,
     addObjectFromPreset
+  );
+};
+
+// Setup Export panel
+let exportPanelAPI;
+const initExportPanel = () => {
+  exportPanelAPI = setupExportPanel(
+    exportPanel,
+    getActiveRecord,
+    getCurrentLanguage
   );
 };
 
@@ -1582,6 +1600,9 @@ ensureInitialObject();
 
 // Initialize Scene panel now that all dependencies are available
 initScenePanel();
+
+// Initialize Export panel
+initExportPanel();
 
 animate();
 
