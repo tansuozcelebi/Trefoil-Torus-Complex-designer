@@ -1467,22 +1467,25 @@ function setGroundStyle(style){
   if (style === 'Flat'){
     ground.visible = true;
     ground.receiveShadow = true;
-    shadowReceiver.visible = true; // project soft shadow onto flat plane
-    if (!scene.children.includes(shadowReceiver)) scene.add(shadowReceiver);
+    // Shadows now fall directly on the checkerboard ground
+    if (shadowReceiver) {
+      shadowReceiver.visible = true;
+      if (!scene.children.includes(shadowReceiver)) scene.add(shadowReceiver);
+    }
   } else if (style === 'Sea'){
     seaObj = makeSea(ground.position.y);
     // enlarge sea coverage to feel like an infinite plane
     seaObj.mesh.scale.set(8,8,8);
     scene.add(seaObj.mesh);
     // Let shadow fall onto the sea surface itself
-    shadowReceiver.visible = false;
+    if (shadowReceiver) shadowReceiver.visible = false;
     ground.visible = false;
   } else if (style === 'Math'){
     mathObj = makeMath(ground.position.y);
     scene.add(mathObj.mesh);
     if (mathObj.wireframe) scene.add(mathObj.wireframe);
     // Sadece matematiksel yüzey gölge alacak, planar shadowReceiver gizlenir
-    shadowReceiver.visible = false;
+    if (shadowReceiver) shadowReceiver.visible = false;
     ground.visible = false;
     if (mathObj.mesh) mathObj.mesh.receiveShadow = true;
   } else if (style === 'Room'){
@@ -1490,14 +1493,16 @@ function setGroundStyle(style){
     scene.add(roomObj.mesh);
     // Keep the flat ground in the room and project shadow onto it
     ground.visible = true;
-    shadowReceiver.visible = true;
-    if (!scene.children.includes(shadowReceiver)) scene.add(shadowReceiver);
+    if (shadowReceiver) {
+      shadowReceiver.visible = true;
+      if (!scene.children.includes(shadowReceiver)) scene.add(shadowReceiver);
+    }
   } else if (style === 'Funnel'){
     funnelObj = makeFunnel(ground.position.y);
     scene.add(funnelObj.mesh);
     // Shadow should fall onto the funnel surface, not the flat plane
     ground.visible = false;
-    shadowReceiver.visible = false;
+    if (shadowReceiver) shadowReceiver.visible = false;
   }
 }
 

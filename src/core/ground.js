@@ -28,13 +28,8 @@ export function createBaseGround(scene, renderer){
   ground.receiveShadow = true;
   scene.add(ground);
 
-  const shadowMat = new THREE.ShadowMaterial({ opacity: 0.6 });
-  const shadowReceiver = new THREE.Mesh(new THREE.PlaneGeometry(groundSize, groundSize), shadowMat);
-  shadowReceiver.rotation.x = -Math.PI / 2;
-  shadowReceiver.position.y = ground.position.y + 0.002;
-  shadowReceiver.receiveShadow = true;
-  shadowReceiver.renderOrder = 2;
-  scene.add(shadowReceiver);
+  // No separate shadow receiver - shadows now fall directly on the checkerboard ground
+  const shadowReceiver = null;
 
   return { ground, shadowReceiver, groundSize };
 }
