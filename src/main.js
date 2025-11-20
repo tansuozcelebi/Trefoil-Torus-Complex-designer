@@ -33,6 +33,34 @@ style.textContent = `
      ensure high-contrast text and friendlier link color in About */
   div[style] a { color: #7fbfff; text-decoration: underline; }
   #tc-modal-root div a { color: #9fc8ff; }
+  
+  /* Custom scrollbar for horizontal navbar scroll */
+  .tc-navbar-tabs::-webkit-scrollbar {
+    height: 4px;
+  }
+  .tc-navbar-tabs::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .tc-navbar-tabs::-webkit-scrollbar-thumb {
+    background: rgba(100,100,120,0.5);
+    border-radius: 2px;
+  }
+  .tc-navbar-tabs::-webkit-scrollbar-thumb:hover {
+    background: rgba(120,120,140,0.7);
+  }
+  .tc-navbar-tabs {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(100,100,120,0.5) transparent;
+  }
+  
+  /* Mobile navbar optimizations */
+  @media (max-width: 768px) {
+    .tc-navbar-tabs {
+      /* Add subtle fade effect on scroll edges */
+      -webkit-mask-image: linear-gradient(to right, transparent, black 20px, black calc(100% - 20px), transparent);
+      mask-image: linear-gradient(to right, transparent, black 20px, black calc(100% - 20px), transparent);
+    }
+  }
 `;
 document.head.appendChild(style);
 
@@ -51,47 +79,22 @@ navBar.style.background = 'rgba(20,20,22,0.7)';
 navBar.style.padding = '6px 10px';
 navBar.style.borderRadius = '8px';
 navBar.style.backdropFilter = 'blur(6px)';
-navBar.style.flexWrap = 'wrap';
+navBar.style.flexWrap = 'nowrap';
 navBar.style.maxWidth = 'calc(100vw - 24px)';
 document.body.appendChild(navBar);
 
-// Hamburger menu button for mobile
-const hamburgerBtn = document.createElement('button');
-hamburgerBtn.innerHTML = '☰';
-hamburgerBtn.style.display = 'none';
-hamburgerBtn.style.padding = '8px 12px';
-hamburgerBtn.style.border = 'none';
-hamburgerBtn.style.background = 'rgba(35,120,200,0.3)';
-hamburgerBtn.style.color = '#fff';
-hamburgerBtn.style.cursor = 'pointer';
-hamburgerBtn.style.borderRadius = '6px';
-hamburgerBtn.style.fontSize = '18px';
-hamburgerBtn.style.lineHeight = '1';
-hamburgerBtn.style.transition = 'background 0.2s ease, transform 0.2s ease';
-hamburgerBtn.style.minHeight = '44px';
-hamburgerBtn.style.minWidth = '44px';
-hamburgerBtn.addEventListener('mouseenter', () => {
-  hamburgerBtn.style.background = 'rgba(35,120,200,0.5)';
-});
-hamburgerBtn.addEventListener('mouseleave', () => {
-  hamburgerBtn.style.background = 'rgba(35,120,200,0.3)';
-});
-hamburgerBtn.addEventListener('click', () => {
-  const isOpen = navBar.dataset.mobileOpen === 'true';
-  navBar.dataset.mobileOpen = isOpen ? 'false' : 'true';
-  hamburgerBtn.innerHTML = isOpen ? '☰' : '✕';
-  hamburgerBtn.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(90deg)';
-  updateMobileMenu();
-});
-navBar.appendChild(hamburgerBtn);
-
-// Container for tab buttons (will be hidden/shown on mobile)
+// Container for tab buttons with horizontal scroll on mobile
 const tabsContainer = document.createElement('div');
+tabsContainer.className = 'tc-navbar-tabs';
 tabsContainer.style.display = 'flex';
 tabsContainer.style.alignItems = 'center';
 tabsContainer.style.gap = '6px';
 tabsContainer.style.flex = '1';
-tabsContainer.style.flexWrap = 'wrap';
+tabsContainer.style.flexWrap = 'nowrap';
+tabsContainer.style.overflowX = 'auto';
+tabsContainer.style.overflowY = 'hidden';
+tabsContainer.style.scrollBehavior = 'smooth';
+tabsContainer.style.WebkitOverflowScrolling = 'touch';
 navBar.appendChild(tabsContainer);
 
 // area to show active object info
@@ -106,76 +109,77 @@ navBar.appendChild(activeInfo);
 // Mobile menu update function
 function updateMobileMenu() {
   const isMobile = window.innerWidth <= 768;
-  const isOpen = navBar.dataset.mobileOpen === 'true';
-  
-  hamburgerBtn.style.display = isMobile ? 'block' : 'none';
   
   if (isMobile) {
-    // Hide active info on mobile when menu is open
-    activeInfo.style.display = isOpen ? 'none' : 'block';
-    activeInfo.style.fontSize = '10px';
-    activeInfo.style.marginLeft = '6px';
-    
-    if (isOpen) {
-      tabsContainer.style.display = 'flex';
-      tabsContainer.style.flexDirection = 'column';
-      tabsContainer.style.width = '100%';
-      tabsContainer.style.marginTop = '8px';
-      navBar.style.maxHeight = '80vh';
-      navBar.style.overflowY = 'auto';
-      
-      // Make all tabs full-width on mobile
-      document.querySelectorAll('button[data-tab]').forEach(btn => {
-        btn.style.width = '100%';
-        btn.style.textAlign = 'left';
-        btn.style.justifyContent = 'flex-start';
-      });
-      
-      // Hide spacer on mobile (check if exists)
-      if (typeof spacer !== 'undefined') {
-        spacer.style.display = 'none';
-      }
-      
-      // Full width language selector on mobile (check if exists)
-      if (typeof langContainer !== 'undefined') {
-        langContainer.style.width = '100%';
-      }
-      if (typeof langBtn !== 'undefined') {
-        langBtn.style.width = '100%';
-      }
-    } else {
-      tabsContainer.style.display = 'none';
-    }
-  } else {
+    // Mobile: horizontal scrollable layout
     activeInfo.style.display = 'block';
-    activeInfo.style.fontSize = '12px';
-    activeInfo.style.marginLeft = '12px';
+    activeInfo.style.fontSize = '9px';
+    activeInfo.style.marginLeft = '0';
+    activeInfo.style.marginRight = '6px';
+    activeInfo.style.flexShrink = '0';
+    activeInfo.style.maxWidth = '120px';
+    activeInfo.style.overflow = 'hidden';
+    activeInfo.style.textOverflow = 'ellipsis';
+    activeInfo.style.whiteSpace = 'nowrap';
     
     tabsContainer.style.display = 'flex';
     tabsContainer.style.flexDirection = 'row';
-    tabsContainer.style.width = 'auto';
-    tabsContainer.style.marginTop = '0';
-    navBar.style.maxHeight = 'none';
-    navBar.style.overflowY = 'visible';
+    tabsContainer.style.flexWrap = 'nowrap';
+    tabsContainer.style.overflowX = 'auto';
+    tabsContainer.style.flex = '1';
+    tabsContainer.style.minWidth = '0';
+    
+    // Make tabs compact but touch-friendly on mobile
+    document.querySelectorAll('button[data-tab]').forEach(btn => {
+      btn.style.flexShrink = '0';
+      btn.style.minWidth = 'auto';
+      btn.style.padding = '8px 12px';
+      btn.style.fontSize = '13px';
+    });
+    
+    // Hide spacer on mobile
+    if (typeof spacer !== 'undefined') {
+      spacer.style.display = 'none';
+    }
+    
+    // Language selector stays compact
+    if (typeof langContainer !== 'undefined') {
+      langContainer.style.flexShrink = '0';
+    }
+  } else {
+    // Desktop: normal flex layout with wrapping
+    activeInfo.style.display = 'block';
+    activeInfo.style.fontSize = '12px';
+    activeInfo.style.marginLeft = '12px';
+    activeInfo.style.marginRight = '0';
+    activeInfo.style.flexShrink = '0';
+    activeInfo.style.maxWidth = 'none';
+    activeInfo.style.overflow = 'visible';
+    activeInfo.style.textOverflow = 'clip';
+    activeInfo.style.whiteSpace = 'normal';
+    
+    tabsContainer.style.display = 'flex';
+    tabsContainer.style.flexDirection = 'row';
+    tabsContainer.style.flexWrap = 'wrap';
+    tabsContainer.style.overflowX = 'visible';
+    tabsContainer.style.flex = '1';
     
     // Reset tab button styles for desktop
     document.querySelectorAll('button[data-tab]').forEach(btn => {
-      btn.style.width = 'auto';
-      btn.style.textAlign = 'center';
-      btn.style.justifyContent = 'center';
+      btn.style.flexShrink = '1';
+      btn.style.minWidth = 'auto';
+      btn.style.padding = '6px 10px';
+      btn.style.fontSize = '14px';
     });
     
-    // Show spacer on desktop (check if exists)
+    // Show spacer on desktop
     if (typeof spacer !== 'undefined') {
       spacer.style.display = 'block';
     }
     
-    // Reset language selector on desktop (check if exists)
+    // Reset language selector
     if (typeof langContainer !== 'undefined') {
-      langContainer.style.width = 'auto';
-    }
-    if (typeof langBtn !== 'undefined') {
-      langBtn.style.width = 'auto';
+      langContainer.style.flexShrink = '1';
     }
   }
 }
@@ -218,11 +222,9 @@ function addTabButton(name){
   btn.dataset.tab = name;
   btn.addEventListener('click', () => {
     showTab(name);
-    // Close mobile menu after selection
+    // On mobile, scroll the clicked tab into view
     if (window.innerWidth <= 768) {
-      navBar.dataset.mobileOpen = 'false';
-      hamburgerBtn.innerHTML = '☰';
-      updateMobileMenu();
+      btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
     }
   });
   tabsContainer.appendChild(btn);
@@ -375,7 +377,6 @@ langContainer.appendChild(langDropdown);
 tabsContainer.appendChild(langContainer);
 
 // Initialize mobile menu state (after all elements created)
-navBar.dataset.mobileOpen = 'false';
 window.addEventListener('resize', updateMobileMenu);
 updateMobileMenu();
 
