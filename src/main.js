@@ -8,6 +8,7 @@ import { setupGUI } from './ui/guiMenu.js';
 import { setupScenePanel } from './ui/scenePanel.js';
 import { setupTouchGizmo } from './ui/touchGizmo.js';
 import { getHelpHtml, getCurrentLanguage, setLanguage, languages, getTabLabel } from './ui/help.js';
+import { i } from 'vite/dist/node/chunks/moduleRunnerTransport.js';
 
 // Raycaster ve pointer tanımı sadece renderer'dan sonra olacak
 
