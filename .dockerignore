@@ -1,0 +1,53 @@
+# Node modules
+node_modules
+npm-debug.log
+
+# Build output
+dist
+.vite
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*.swn
+
+# Environment files (use .env.example instead)
+.env
+.env.local
+.env.*.local
+
+# Documentation
+*.md
+!README.md
+docs
+
+# Test files
+*.test.js
+*.test.ts
+*.spec.js
+*.spec.ts
+coverage
+
+# Temporary files
+tmp
+temp
+*.tmp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Images (for documentation)
+image.png
+image-1.png
+preview.jpg
+
+# Misc
+CHANGELOG.md
+trefoil-seo-guidelines.md
