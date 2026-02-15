@@ -25,6 +25,7 @@ dist
 # Documentation
 *.md
 !README.md
+!DOCKER.md
 docs
 
 # Test files
