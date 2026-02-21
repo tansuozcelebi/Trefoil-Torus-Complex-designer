@@ -3,7 +3,7 @@ import { createRendererAndScene } from './core/scene.js';
 import { createBaseGround } from './core/ground.js';
 import { createLights } from './core/lights.js';
 import { setupKeyboardControls } from './controls/keyboard.js';
-import { tabs as TabsConfig } from './ui/tabs';
+import { tabs as TabsConfig } from './ui/tabs.ts';
 import { setupGUI } from './ui/guiMenu.js';
 import { setupScenePanel } from './ui/scenePanel.js';
 import { setupTouchGizmo } from './ui/touchGizmo.js';
@@ -1725,3 +1725,4 @@ window.addEventListener('pointerdown', (e) => {
 // Initialized from external module
 setupTouchGizmo(params, saveParamsToActive, applyTransform, gui);
 
+s
