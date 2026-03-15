@@ -1,0 +1,24 @@
+services:
+  trefoil-torus-app:
+    image: ${APP_NAME:-trefoil-torus-complex}:${APP_VERSION:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ${COMPOSE_PROJECT_NAME:-trefoil-torus}-app
+    ports:
+      - "${HOST_PORT:-8080}:80"
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - trefoil-network
+
+networks:
+  trefoil-network:
+    driver: bridge

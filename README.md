@@ -77,6 +77,22 @@ npm run test
 
 To build: `npm run build` and serve the `dist` folder.
 
+## Docker Deployment / Docker ile Dağıtım
+
+You can run this application using Docker for easy deployment:
+
+```bash
+# Copy environment file
+cp .env.example .env
+
+# Build and run with Docker Compose
+docker compose up -d
+
+# Access at http://localhost:8080
+```
+
+For detailed Docker instructions, see [DOCKER.md](DOCKER.md).
+
 ## Release v1.0.0
 
 This repository is released as version `1.0.0`.
