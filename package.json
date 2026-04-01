@@ -12,7 +12,6 @@
   "dependencies": {
     "@react-three/drei": "^9.122.0",
     "@react-three/fiber": "^8.18.0",
-    "babel-plugin-glsl": "^1.0.0",
     "dat.gui": "^0.7.9",
     "file-saver": "^2.0.5",
     "react": "^18.2.0",

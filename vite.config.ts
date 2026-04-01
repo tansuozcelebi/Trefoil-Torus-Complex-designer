@@ -11,9 +11,7 @@ export default defineConfig({
       protocol: 'ws',
       host: 'localhost',
       port: 5173,
-      clientPort: 5173,
-      // If behind a reverse proxy, uncomment the next line to force base path
-      // path: '/'
+      clientPort: 5173
     }
   },
   build: {

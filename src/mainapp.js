@@ -10,11 +10,17 @@ import { setupTouchGizmo } from './ui/touchGizmo.js';
 import { getHelpHtml, getCurrentLanguage, setLanguage, languages, getTabLabel } from './ui/help.js';
 import { getAboutHtml } from './ui/about.js';
 import { setupExportPanel } from './ui/exportMenu.js';
+import { setupNavbar } from './ui/navbar.js';
 import { TrefoilCurve } from './objects/trefoil.js';
 import { SeptafoilCurve } from './objects/septafoil.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { Reflector } from 'three/examples/jsm/objects/Reflector.js';
 import { saveAs } from 'file-saver';
+import { createSea as makeSea } from './grounds/sea.js';
+import { createMathSurface as makeMath } from './grounds/math.js';
+import { createRoom as makeRoom } from './grounds/room.js';
+import { createFunnel as makeFunnel } from './grounds/funnel.js';
+import { injectSeoContent } from './languages-seo.js';
 
 // Raycaster ve pointer tanımı sadece renderer'dan sonra olacak
 
@@ -65,568 +71,8 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-// top navigation bar and content panels
-const navBar = document.createElement('div');
-navBar.style.position = 'fixed';
-navBar.style.top = '12px';
-navBar.style.left = '12px';
-navBar.style.right = '12px';
-navBar.style.transform = 'none';
-navBar.style.zIndex = '1000';
-navBar.style.display = 'flex';
-navBar.style.alignItems = 'center';
-navBar.style.gap = '6px';
-navBar.style.background = 'rgba(20,20,22,0.7)';
-navBar.style.padding = '6px 10px';
-navBar.style.borderRadius = '8px';
-navBar.style.backdropFilter = 'blur(6px)';
-navBar.style.flexWrap = 'nowrap';
-navBar.style.maxWidth = 'calc(100vw - 24px)';
-document.body.appendChild(navBar);
-
-// Mobile sidebar menu overlay/backdrop
-const mobileOverlay = document.createElement('div');
-mobileOverlay.style.cssText = `
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 1999;
-  display: none;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-`;
-document.body.appendChild(mobileOverlay);
-
-// Mobile sidebar menu (slides from right)
-const mobileSidebar = document.createElement('div');
-mobileSidebar.style.cssText = `
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 30%;
-  min-width: 200px;
-  max-width: 300px;
-  background: rgba(15,15,20,0.95);
-  backdrop-filter: blur(12px);
-  z-index: 2000;
-  transform: translateX(100%);
-  transition: transform 0.3s ease;
-  overflow-y: auto;
-  padding: 20px;
-  box-shadow: -4px 0 20px rgba(0,0,0,0.5);
-`;
-document.body.appendChild(mobileSidebar);
-
-// Hamburger menu button for mobile - positioned on the right
-const hamburgerBtn = document.createElement('button');
-hamburgerBtn.innerHTML = '☰';
-hamburgerBtn.style.display = 'none';
-hamburgerBtn.style.padding = '8px 12px';
-hamburgerBtn.style.border = 'none';
-hamburgerBtn.style.background = 'rgba(35,120,200,0.3)';
-hamburgerBtn.style.color = '#fff';
-hamburgerBtn.style.cursor = 'pointer';
-hamburgerBtn.style.borderRadius = '6px';
-hamburgerBtn.style.fontSize = '18px';
-hamburgerBtn.style.lineHeight = '1';
-hamburgerBtn.style.transition = 'background 0.2s ease, transform 0.2s ease';
-hamburgerBtn.style.minHeight = '44px';
-hamburgerBtn.style.minWidth = '44px';
-hamburgerBtn.style.marginLeft = 'auto'; // Push to the right
-hamburgerBtn.addEventListener('mouseenter', () => {
-  hamburgerBtn.style.background = 'rgba(35,120,200,0.5)';
-});
-hamburgerBtn.addEventListener('mouseleave', () => {
-  hamburgerBtn.style.background = 'rgba(35,120,200,0.3)';
-});
-hamburgerBtn.addEventListener('click', () => {
-  const isOpen = mobileSidebar.dataset.open === 'true';
-  toggleMobileSidebar(!isOpen);
-});
-navBar.appendChild(hamburgerBtn);
-
-// Function to toggle mobile sidebar
-function toggleMobileSidebar(open) {
-  mobileSidebar.dataset.open = open ? 'true' : 'false';
-  hamburgerBtn.innerHTML = open ? '✕' : '☰';
-  
-  if (open) {
-    mobileOverlay.style.display = 'block';
-    setTimeout(() => mobileOverlay.style.opacity = '1', 10);
-    mobileSidebar.style.transform = 'translateX(0)';
-  } else {
-    mobileOverlay.style.opacity = '0';
-    mobileSidebar.style.transform = 'translateX(100%)';
-    setTimeout(() => mobileOverlay.style.display = 'none', 300);
-  }
-}
-
-// Close sidebar when clicking overlay
-mobileOverlay.addEventListener('click', () => toggleMobileSidebar(false));
-
-// Container for tab buttons (will be hidden/shown on mobile)
-// Container for tab buttons with horizontal scroll on mobile
-const tabsContainer = document.createElement('div');
-tabsContainer.className = 'tc-navbar-tabs';
-tabsContainer.style.display = 'flex';
-tabsContainer.style.alignItems = 'center';
-tabsContainer.style.gap = '6px';
-tabsContainer.style.flex = '1';
-tabsContainer.style.flexWrap = 'nowrap';
-tabsContainer.style.overflowX = 'auto';
-tabsContainer.style.overflowY = 'hidden';
-tabsContainer.style.scrollBehavior = 'smooth';
-tabsContainer.style.WebkitOverflowScrolling = 'touch';
-navBar.appendChild(tabsContainer);
-
-// area to show active object info
-const activeInfo = document.createElement('div');
-activeInfo.style.marginLeft = '12px';
-activeInfo.style.color = '#3fa7ff'; // blue
-activeInfo.style.fontSize = '12px';
-activeInfo.style.flexShrink = '0';
-activeInfo.style.order = '-1'; // Show before hamburger on mobile
-navBar.appendChild(activeInfo);
-
-// Mobile menu update function
-function updateMobileMenu() {
-  const isMobile = window.innerWidth <= 768;
-  
-  hamburgerBtn.style.display = isMobile ? 'block' : 'none';
-  
-  if (isMobile) {
-    // On mobile, hide the main tabsContainer from navbar
-    tabsContainer.style.display = 'none';
-    
-    // Adjust active info for mobile
-    activeInfo.style.fontSize = '10px';
-    activeInfo.style.marginLeft = '6px';
-    activeInfo.style.flex = '1'; // Take up space so hamburger is pushed right
-  } else {
-    // Desktop: show tabs in navbar, hide sidebar
-    activeInfo.style.display = 'block';
-    activeInfo.style.fontSize = '12px';
-    activeInfo.style.marginLeft = '12px';
-    activeInfo.style.flex = '0';
-    
-    tabsContainer.style.display = 'flex';
-    tabsContainer.style.flexDirection = 'row';
-    tabsContainer.style.width = 'auto';
-    tabsContainer.style.marginTop = '0';
-  
-  if (isMobile) {
-    // Mobile: horizontal scrollable layout
-    activeInfo.style.display = 'block';
-    activeInfo.style.fontSize = '9px';
-    activeInfo.style.marginLeft = '0';
-    activeInfo.style.marginRight = '6px';
-    activeInfo.style.flexShrink = '0';
-    activeInfo.style.maxWidth = '120px';
-    activeInfo.style.overflow = 'hidden';
-    activeInfo.style.textOverflow = 'ellipsis';
-    activeInfo.style.whiteSpace = 'nowrap';
-    
-    tabsContainer.style.display = 'flex';
-    tabsContainer.style.flexDirection = 'row';
-    tabsContainer.style.flexWrap = 'nowrap';
-    tabsContainer.style.overflowX = 'auto';
-    tabsContainer.style.flex = '1';
-    tabsContainer.style.minWidth = '0';
-    
-    // Make tabs compact but touch-friendly on mobile
-    document.querySelectorAll('button[data-tab]').forEach(btn => {
-      btn.style.flexShrink = '0';
-      btn.style.minWidth = 'auto';
-      btn.style.padding = '8px 12px';
-      btn.style.fontSize = '13px';
-    });
-    
-    // Hide spacer on mobile
-    if (typeof spacer !== 'undefined') {
-      spacer.style.display = 'none';
-    }
-    
-    // Language selector stays compact
-    if (typeof langContainer !== 'undefined') {
-      langContainer.style.flexShrink = '0';
-    }
-  } else {
-    // Desktop: normal flex layout with wrapping
-    activeInfo.style.display = 'block';
-    activeInfo.style.fontSize = '12px';
-    activeInfo.style.marginLeft = '12px';
-    activeInfo.style.marginRight = '0';
-    activeInfo.style.flexShrink = '0';
-    activeInfo.style.maxWidth = 'none';
-    activeInfo.style.overflow = 'visible';
-    activeInfo.style.textOverflow = 'clip';
-    activeInfo.style.whiteSpace = 'normal';
-    
-    tabsContainer.style.display = 'flex';
-    tabsContainer.style.flexDirection = 'row';
-    tabsContainer.style.flexWrap = 'wrap';
-    tabsContainer.style.overflowX = 'visible';
-    tabsContainer.style.flex = '1';
-    
-    // Reset tab button styles for desktop
-    document.querySelectorAll('button[data-tab]').forEach(btn => {
-      btn.style.flexShrink = '1';
-      btn.style.minWidth = 'auto';
-      btn.style.padding = '6px 10px';
-      btn.style.fontSize = '14px';
-    });
-    
-    // Close mobile sidebar if open
-    toggleMobileSidebar(false);
-    // Show spacer on desktop
-    if (typeof spacer !== 'undefined') {
-      spacer.style.display = 'block';
-    }
-    
-    // Reset language selector
-    if (typeof langContainer !== 'undefined') {
-      langContainer.style.flexShrink = '1';
-    }
-  }
-}
-
-// version display moved to bottom-left stats overlay
-
-function makeTab(label){
-  const t = document.createElement('button');
-  t.textContent = label;
-  t.style.padding = '6px 10px';
-  t.style.border = 'none';
-  t.style.background = 'transparent';
-  t.style.color = '#fff';
-  t.style.cursor = 'pointer';
-  t.style.borderRadius = '4px';
-  t.style.position = 'relative';
-  t.style.transition = 'background 0.25s ease, box-shadow 0.3s ease, transform 0.18s ease';
-  t.style.boxShadow = '0 0 0px rgba(0,180,255,0)';
-  t.style.whiteSpace = 'nowrap';
-  t.addEventListener('mouseenter', () => {
-    t.style.background = 'rgba(35,120,200,0.18)';
-    t.style.boxShadow = '0 0 8px rgba(0,170,255,0.55), 0 0 16px rgba(0,120,255,0.35)';
-  });
-  t.addEventListener('mouseleave', () => {
-    if (!t.dataset.active){
-      t.style.background = 'transparent';
-      t.style.boxShadow = '0 0 0px rgba(0,180,255,0)';
-      t.style.transform = 'none';
-    }
-  });
-  t.addEventListener('mousedown', () => { t.style.transform = 'translateY(1px) scale(0.97)'; });
-  t.addEventListener('mouseup', () => { t.style.transform = 'none'; });
-  return t;
-}
-
-const panels = {};
-function addTabButton(name){
-  const currentLang = getCurrentLanguage();
-  const btn = makeTab(getTabLabel(name, currentLang));
-  btn.dataset.tab = name;
-  btn.addEventListener('click', () => {
-    showTab(name);
-    // On mobile, scroll the clicked tab into view
-    if (window.innerWidth <= 768) {
-      toggleMobileSidebar(false);
-      btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-    }
-  });
-  tabsContainer.appendChild(btn);
-  
-  // Also add a copy to mobile sidebar
-  const mobileBtn = makeTab(getTabLabel(name, currentLang));
-  mobileBtn.dataset.tab = name;
-  mobileBtn.style.width = '100%';
-  mobileBtn.style.marginBottom = '8px';
-  mobileBtn.style.textAlign = 'left';
-  mobileBtn.style.padding = '12px 16px';
-  mobileBtn.addEventListener('click', () => {
-    showTab(name);
-    toggleMobileSidebar(false);
-  });
-  mobileSidebar.appendChild(mobileBtn);
-  const panel = document.createElement('div');
-  panel.style.position = 'fixed';
-  // position will be computed dynamically under the triggering button in showTab
-  panel.style.transform = 'translateY(-8px) scale(0.98)';
-  panel.style.zIndex = '999';
-  panel.style.background = 'rgba(15,15,20,0.65)';
-  panel.style.backdropFilter = 'blur(8px) saturate(120%)';
-  panel.style.border = '1px solid rgba(255,255,255,0.08)';
-  panel.style.boxShadow = '0 10px 28px rgba(0,0,0,0.35)';
-  panel.style.color = '#fff';
-  panel.style.padding = '12px';
-  panel.style.borderRadius = '10px';
-  panel.style.minWidth = '320px';
-  panel.style.maxHeight = '60vh';
-  panel.style.overflow = 'auto';
-  panel.style.opacity = '0';
-  panel.style.display = 'none';
-  panel.style.transition = 'transform 360ms cubic-bezier(0.2, 0.8, 0.2, 1.2), opacity 360ms cubic-bezier(0.2, 0.8, 0.2, 1)';
-  document.body.appendChild(panel);
-  panels[name] = panel;
-}
-
-// Build left tabs, spacer, and right-aligned Object
-TabsConfig.left.forEach(addTabButton);
-const spacer = document.createElement('div'); spacer.style.flex = '1'; tabsContainer.appendChild(spacer);
-TabsConfig.right.forEach(addTabButton);
-TabsConfig.tail.forEach(addTabButton);
-
-// Global language change function
-function updateLanguage(newLang) {
-  setLanguage(newLang);
-  
-  // Update navbar button
-  const langBtn = document.querySelector('button[data-lang-selector]');
-  const langData = languages.find(l => l.code === newLang);
-  if (langBtn && langData) {
-    langBtn.innerHTML = `${langData.flag} ${newLang.toUpperCase()}`;
-  }
-  
-  // Update all tab labels
-  document.querySelectorAll('button[data-tab]').forEach(btn => {
-    const tabName = btn.dataset.tab;
-    btn.textContent = getTabLabel(tabName, newLang);
-  });
-  
-  // Update Help panel if it exists
-  if (panels['Help']) {
-    panels['Help'].innerHTML = getHelpHtml(newLang);
-  }
-  
-  // Update About panel if it exists
-  if (panels['About']) {
-    const aboutSelect = panels['About'].querySelector('#aboutLang');
-    if (aboutSelect) aboutSelect.value = newLang;
-    const aboutContent = panels['About'].querySelector('#aboutContent');
-    if (aboutContent) aboutContent.innerHTML = getAboutHtml(newLang);
-  }
-  
-  // Update Export panel if it exists
-  if (exportPanelAPI && exportPanelAPI.updateLanguage) {
-    exportPanelAPI.updateLanguage();
-  }
-}
-
-// Language selector dropdown with flags
-const langContainer = document.createElement('div');
-langContainer.style.cssText = 'position: relative;';
-
-const currentLangData = languages.find(l => l.code === getCurrentLanguage()) || languages[0];
-const langBtn = document.createElement('button');
-langBtn.setAttribute('data-lang-selector', 'true');
-langBtn.innerHTML = `${currentLangData.flag} ${currentLangData.code.toUpperCase()}`;
-langBtn.style.cssText = `
-  padding: 6px 10px;
-  background: rgba(60,60,70,0.9);
-  color: #fff;
-  border: 1px solid rgba(100,100,120,0.5);
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 11px;
-  font-weight: 600;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-`;
-
-const langDropdown = document.createElement('div');
-langDropdown.style.cssText = `
-  display: none;
-  position: absolute;
-  top: 100%;
-  right: 0;
-  margin-top: 4px;
-  background: rgba(30,30,35,0.95);
-  border: 1px solid rgba(100,100,120,0.5);
-  border-radius: 6px;
-  backdrop-filter: blur(8px);
-  max-height: 400px;
-  overflow-y: auto;
-  z-index: 10000;
-  min-width: 180px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-`;
-
-languages.forEach(lang => {
-  const item = document.createElement('div');
-  item.style.cssText = `
-    padding: 8px 12px;
-    cursor: pointer;
-    transition: background 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 12px;
-    color: #fff;
-  `;
-  item.innerHTML = `<span style="font-size:16px">${lang.flag}</span> <span>${lang.name}</span>`;
-  
-  item.onmouseenter = () => item.style.background = 'rgba(60,60,80,0.8)';
-  item.onmouseleave = () => item.style.background = 'transparent';
-  
-  item.onclick = () => {
-    updateLanguage(lang.code);
-    langDropdown.style.display = 'none';
-  };
-  
-  langDropdown.appendChild(item);
-});
-
-langBtn.onclick = (e) => {
-  e.stopPropagation();
-  langDropdown.style.display = langDropdown.style.display === 'none' ? 'block' : 'none';
-};
-
-langBtn.onmouseenter = () => {
-  langBtn.style.background = 'rgba(80,80,100,0.9)';
-  langBtn.style.borderColor = 'rgba(120,120,150,0.7)';
-};
-langBtn.onmouseleave = () => {
-  langBtn.style.background = 'rgba(60,60,70,0.9)';
-  langBtn.style.borderColor = 'rgba(100,100,120,0.5)';
-};
-
-// Close dropdown when clicking outside
-document.addEventListener('click', () => {
-  langDropdown.style.display = 'none';
-});
-
-langContainer.appendChild(langBtn);
-langContainer.appendChild(langDropdown);
-tabsContainer.appendChild(langContainer);
-
-// Add language selector to mobile sidebar
-const mobileLangSection = document.createElement('div');
-mobileLangSection.style.cssText = `
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 1px solid rgba(255,255,255,0.1);
-`;
-
-languages.forEach(lang => {
-  const item = document.createElement('button');
-  item.style.cssText = `
-    width: 100%;
-    padding: 12px 16px;
-    cursor: pointer;
-    transition: background 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 14px;
-    color: #fff;
-    background: transparent;
-    border: none;
-    border-radius: 6px;
-    margin-bottom: 4px;
-    text-align: left;
-  `;
-  item.innerHTML = `<span style="font-size:20px">${lang.flag}</span> <span>${lang.name}</span>`;
-  
-  item.onmouseenter = () => item.style.background = 'rgba(60,60,80,0.8)';
-  item.onmouseleave = () => item.style.background = 'transparent';
-  
-  item.onclick = () => {
-    updateLanguage(lang.code);
-    toggleMobileSidebar(false);
-  };
-  
-  mobileLangSection.appendChild(item);
-});
-
-mobileSidebar.appendChild(mobileLangSection);
-
-// Initialize mobile menu state (after all elements created)
-window.addEventListener('resize', updateMobileMenu);
-updateMobileMenu();
-
-
-
-// quick helper to toggle tabs
-const panelHideTimers = {};
-function setPanelVisible(key, visible){
-  const el = panels[key]; if (!el) return;
-  clearTimeout(panelHideTimers[key]);
-  if (visible){
-    if (el.style.display !== 'block'){
-      el.style.display = 'block';
-      // force reflow before animating to target
-      void el.offsetHeight;
-    }
-    el.style.opacity = '1';
-    el.style.transform = 'translateY(0px) scale(1)';
-  } else {
-    el.style.opacity = '0';
-    el.style.transform = 'translateY(-8px) scale(0.98)';
-    panelHideTimers[key] = setTimeout(()=>{ el.style.display = 'none'; }, 220);
-  }
-}
-
-function showTab(name){
-  Object.keys(panels).forEach(k => setPanelVisible(k, false));
-  const panel = panels[name];
-  if (panel){
-    // Try to locate the triggering button (works for both vanilla and React nav if data-tab is present)
-    const triggerBtn = document.querySelector(`button[data-tab="${name}"]`) || Array.from(document.querySelectorAll('button')).find(b => b.textContent === name);
-    if (triggerBtn){
-      const rect = triggerBtn.getBoundingClientRect();
-      const margin = 8; // small gap under the button
-      // Set panel width to at least 320px, but allow it to shrink if near the right edge
-      const minW = 320;
-      panel.style.minWidth = minW + 'px';
-      // Compute left/top based on viewport coordinates (fixed positioning)
-      let left = rect.left;
-      let top = rect.bottom + margin;
-      // Adjust if overflowing to the right
-      // Temporarily display to measure width if needed
-      const prevDisplay = panel.style.display;
-      if (prevDisplay === 'none') panel.style.display = 'block';
-      const pw = Math.max(panel.offsetWidth || 0, minW);
-      if (prevDisplay === 'none') panel.style.display = 'none';
-      if (left + pw > window.innerWidth - 12){
-        left = Math.max(12, window.innerWidth - pw - 12);
-      }
-      panel.style.left = left + 'px';
-      panel.style.top = top + 'px';
-    }
-    setPanelVisible(name, true);
-  }
-  // If Object tab is selected, ensure Controls GUI is visible
-  if (name === 'Object' && typeof window.showControlsGUI === 'function') {
-    window.showControlsGUI();
-  }
-  // If Scene tab is opened, (re)build the presets grid to ensure it's up-to-date
-  if (name === 'Scene' && scenePanelAPI && typeof scenePanelAPI.buildScenePresets === 'function') {
-    try { scenePanelAPI.buildScenePresets(); } catch (e) {}
-  }
-  // update active tab glow
-  // first clear across all nav buttons that carry data-tab
-  Array.from(document.querySelectorAll('button[data-tab]')).forEach(b => {
-    if (b.textContent === name){
-      b.dataset.active = '1';
-      b.style.background = 'rgba(35,120,200,0.28)';
-      b.style.boxShadow = '0 0 10px rgba(0,200,255,0.75), 0 0 24px rgba(0,140,255,0.45)';
-    } else {
-      delete b.dataset.active;
-      b.style.background = 'transparent';
-      b.style.boxShadow = '0 0 0px rgba(0,0,0,0)';
-      b.style.transform = 'none';
-    }
-  });
-}
-
-// Panels start closed - user can click nav buttons to open
-// showTab('Home'); // removed - no default open tab
+// Initialize navbar module - replaces ~560 lines of inline navbar setup code
+const { navBar, panels, showTab, activeInfo } = setupNavbar();
 
 // Environment panel will receive the toolbar
 const envPanel = panels['Environment'];
@@ -737,11 +183,6 @@ const { ambient, spot } = createLights(scene);
 
 // Ground + shadow receiver
 const { ground, shadowReceiver, groundSize } = createBaseGround(scene, renderer);
-
-import { createSea as makeSea } from './grounds/sea.js';
-import { createMathSurface as makeMath } from './grounds/math.js';
-import { createRoom as makeRoom } from './grounds/room.js';
-import { createFunnel as makeFunnel } from './grounds/funnel.js';
 
 let reflector = null;
 let seaObj = null; // {mesh, setTime, resize}
@@ -1168,11 +609,6 @@ if (envPanel) {
 // Initialize keyboard controls after GUI and helpers are available
 const disposeKeyboard = setupKeyboardControls({ params, getActiveRecord, applyTransform, rebuild, saveParamsToActive, gui });
 
-// Export folder (if needed)
-// const exportFolder = gui.addFolder('Export');
-// exportFolder.add({ screenshot: takeScreenshot }, 'screenshot');
-// exportFolder.open();
-
 // Orbit controls
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
@@ -1370,15 +806,9 @@ function applyTransform(){
 
 // Environment
 let currentEnvMap = null;
-function loadEnv(){
-  // use simple gradient environment if no HDR available
-  const tex = new THREE.TextureLoader().load('/');
-  // leave currentEnvMap null for now; user can add HDR later
-}
 
 function updateMaterial(){
   if (!knotMaterial) return;
-  const old = knotMaterial;
   knotMaterial = createMaterial();
   knotMaterial.envMap = currentEnvMap;
   knotMaterial.needsUpdate = true;
@@ -1542,9 +972,6 @@ function onWindowResize(){
   }
 }
 
-// Auto-rotate
-let rot = 0;
-
 function animate(){
   requestAnimationFrame(animate);
   const now = performance.now() * 0.001;
@@ -1609,6 +1036,9 @@ initScenePanel();
 // Initialize Export panel
 initExportPanel();
 
+// Inject multilingual SEO content for search engines
+injectSeoContent();
+
 animate();
 
 // --- Raycaster-based object selection and highlight ---
@@ -1664,7 +1094,6 @@ if (panels['Object'].style.display === 'block') {
 }
 
 // populate Home/About/Help panels with content (About/Help loaded from modules)
-import { showModal } from './ui/modal.js';
 // Home UI'yi kur (obje zaten oluşturuldu)
 buildHomeUI();
 // allow language selection and modal viewing
@@ -1699,7 +1128,7 @@ panels['About'].querySelector('#aboutMore').addEventListener('click', (e) => {
 panels['Help'].innerHTML = getHelpHtml(getCurrentLanguage());
 
 // allow mounting the React-based nav optionally
-export async function mountReactNav(){
+window.mountReactNav = async function(){
   try{
     const mod = await import('./ui/index.tsx');
     const unmount = mod.mountNav((tab) => showTab(tab));
@@ -1724,5 +1153,3 @@ window.addEventListener('pointerdown', (e) => {
 // --- Touch 6-axis Transform Gizmo (Mobile/Tablet) ---
 // Initialized from external module
 setupTouchGizmo(params, saveParamsToActive, applyTransform, gui);
-
-s
