@@ -132,24 +132,22 @@ cp deploy/siteground.env.example deploy/siteground.env
 ### GitHub Actions ile / With GitHub Actions
 
 `.github/workflows/deploy-siteground.yml` her `main` push'unda build edip rsync'ler.
+Passphrase korumalı SSH anahtarını `ssh-agent`'a yükler.
 
 **Secrets** (Settings → Secrets and variables → Actions → Secrets):
 
-| Secret               | Açıklama / Description                    |
-| -------------------- | ----------------------------------------- |
-| `SG_SSH_PRIVATE_KEY` | SiteGround'a yetkili özel anahtar         |
-| `SG_HOST`            | SSH adresi / IP                           |
-| `SG_USER`            | SSH kullanıcı adı (Site Tools'tan)        |
-| `SG_PORT`            | SSH portu (genelde `18765`)               |
-
-**Variables** (Settings → Secrets and variables → Actions → Variables):
-
-| Variable        | Örnek / Example                            |
-| --------------- | ------------------------------------------ |
-| `SG_REMOTE_DIR` | `~/www/alanadiniz.com/public_html`         |
+| Secret                      | Açıklama / Description                       |
+| --------------------------- | -------------------------------------------- |
+| `SITEGROUND_SSH_KEY`        | SiteGround'a yetkili özel anahtar (tam içerik) |
+| `SITEGROUND_SSH_PASSPHRASE` | Özel anahtarın parolası                       |
+| `SITEGROUND_SSH_HOST`       | SSH adresi / IP                               |
+| `SITEGROUND_SSH_USER`       | SSH kullanıcı adı (Site Tools'tan)            |
+| `SITEGROUND_SSH_PORT`       | SSH portu (genelde `18765`)                   |
+| `SITEGROUND_DEPLOY_PATH`    | Hedef dizin, örn. `~/www/alanadiniz.com/public_html` |
 
 SiteGround SSH anahtarını Site Tools → **Devs → SSH Keys Manager** üzerinden
-ekleyin; özel anahtarı `SG_SSH_PRIVATE_KEY` secret'ına yapıştırın.
+ekleyin; özel anahtarı `SITEGROUND_SSH_KEY`, parolasını
+`SITEGROUND_SSH_PASSPHRASE` secret'ına yapıştırın.
 
 ---
 
