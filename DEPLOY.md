@@ -97,14 +97,74 @@ otomatik çalışır. **Actions** sekmesinden ilerlemeyi izleyebilirsiniz.
 
 ---
 
+---
+
+## 3. SiteGround'a Deploy / Deploy to SiteGround
+
+> **Önemli:** SiteGround paylaşımlı hosting **Docker desteklemez.** Bu yüzden
+> SiteGround için Docker akışı yerine statik site `dist/` çıktısı build edilip
+> SSH/rsync ile `public_html`'e yüklenir. SPA yönlendirmesi `public/.htaccess`
+> (Apache) ile sağlanır.
+>
+> **Note:** SiteGround shared hosting does not support Docker, so we build the
+> static `dist/` and rsync it into `public_html`. SPA routing is handled by
+> `public/.htaccess` (Apache).
+
+### Web kökü / Document root
+
+```
+~/www/<alanadiniz.com>/public_html
+```
+
+SSH'ta doğrulamak için: `cd ~ && ls www` (domain klasörlerini gösterir).
+SiteGround SSH portu varsayılan **18765**'tir.
+
+### Yerel script ile / With the local script
+
+```bash
+cp deploy/siteground.env.example deploy/siteground.env
+# deploy/siteground.env içini doldurun: SG_HOST, SG_USER, SG_PORT, SG_KEY, SG_REMOTE_DIR
+
+./deploy/siteground-deploy.sh             # build + rsync ile yükle
+./deploy/siteground-deploy.sh --no-build  # mevcut dist/'i yükle
+```
+
+### GitHub Actions ile / With GitHub Actions
+
+`.github/workflows/deploy-siteground.yml` her `main` push'unda build edip rsync'ler.
+
+**Secrets** (Settings → Secrets and variables → Actions → Secrets):
+
+| Secret               | Açıklama / Description                    |
+| -------------------- | ----------------------------------------- |
+| `SG_SSH_PRIVATE_KEY` | SiteGround'a yetkili özel anahtar         |
+| `SG_HOST`            | SSH adresi / IP                           |
+| `SG_USER`            | SSH kullanıcı adı (Site Tools'tan)        |
+| `SG_PORT`            | SSH portu (genelde `18765`)               |
+
+**Variables** (Settings → Secrets and variables → Actions → Variables):
+
+| Variable        | Örnek / Example                            |
+| --------------- | ------------------------------------------ |
+| `SG_REMOTE_DIR` | `~/www/alanadiniz.com/public_html`         |
+
+SiteGround SSH anahtarını Site Tools → **Devs → SSH Keys Manager** üzerinden
+ekleyin; özel anahtarı `SG_SSH_PRIVATE_KEY` secret'ına yapıştırın.
+
+---
+
 ## Dosyalar / Files
 
-| Dosya                          | Görev / Purpose                                    |
-| ------------------------------ | -------------------------------------------------- |
-| `deploy/deploy.sh`             | Yerelden SSH ile deploy tetikler                   |
-| `deploy/server-deploy.sh`      | Sunucuda çalışır: çek + derle + yeniden başlat     |
-| `deploy/deploy.env.example`    | SSH yapılandırma şablonu                            |
-| `.github/workflows/deploy.yml` | `main` push'ta otomatik deploy                     |
+| Dosya                                    | Görev / Purpose                                    |
+| ---------------------------------------- | -------------------------------------------------- |
+| `deploy/deploy.sh`                       | Yerelden SSH ile Docker deploy tetikler            |
+| `deploy/server-deploy.sh`                | Sunucuda: çek + derle + yeniden başlat (Docker)    |
+| `deploy/deploy.env.example`              | SSH/Docker yapılandırma şablonu                    |
+| `deploy/siteground-deploy.sh`            | SiteGround: build + rsync ile `public_html`'e yükle |
+| `deploy/siteground.env.example`          | SiteGround yapılandırma şablonu                    |
+| `public/.htaccess`                       | Apache SPA yönlendirme + cache + güvenlik başlıkları |
+| `.github/workflows/deploy.yml`           | `main` push'ta Docker SSH deploy                   |
+| `.github/workflows/deploy-siteground.yml`| `main` push'ta SiteGround rsync deploy             |
 
 ## Sorun Giderme / Troubleshooting
 
