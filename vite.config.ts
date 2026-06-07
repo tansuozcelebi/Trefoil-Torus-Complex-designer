@@ -1,8 +1,16 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { readFileSync } from 'node:fs';
+
+// Read the (just-bumped) version so it can be injected into the app.
+const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
 
 export default defineConfig({
   plugins: [react({ include: /\.(jsx|tsx)$/ })],
+  define: {
+    // Bare version string, e.g. "1.1.4". Bumped on each build by prebuild.
+    __APP_VERSION__: JSON.stringify(pkg.version)
+  },
   server: {
     host: true, // listen on all addresses (useful for LAN/mobile tests)
     port: 5173,

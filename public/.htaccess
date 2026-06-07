@@ -1,0 +1,38 @@
+# Apache config for SiteGround (and other Apache hosts).
+# Copied to the dist/ root at build time (Vite publicDir) and uploaded to
+# public_html by deploy/siteground-deploy.sh.
+
+# --- SPA routing: serve index.html for client-side routes -------------------
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  # Don't rewrite real files or directories.
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+  # Everything else falls back to index.html.
+  RewriteRule ^ index.html [L]
+</IfModule>
+
+# --- Gzip compression -------------------------------------------------------
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/plain text/html text/xml text/css \
+    text/javascript application/javascript application/x-javascript \
+    application/json application/xml image/svg+xml
+</IfModule>
+
+# --- Cache hashed static assets aggressively --------------------------------
+<IfModule mod_headers.c>
+  <FilesMatch "\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+  # Never cache the HTML entry point so new builds are picked up.
+  <FilesMatch "\.html$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
+
+  # --- Security headers (mirror nginx.conf) ---------------------------------
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; child-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self';"
+</IfModule>

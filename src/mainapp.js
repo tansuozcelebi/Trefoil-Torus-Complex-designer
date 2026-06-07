@@ -109,8 +109,9 @@ const initExportPanel = () => {
   );
 };
 
-// Stats overlay (bottom-left): vertex & face counts
-const APP_VERSION = 'v1.1.3';
+// Stats overlay (bottom-left): active object info + vertex & face counts + version
+// Version is injected by Vite (define) from package.json and bumped on each build.
+const APP_VERSION = 'v' + (typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.0.0');
 const statsOverlay = document.createElement('div');
 statsOverlay.style.position = 'fixed';
 statsOverlay.style.left = '12px';
@@ -123,19 +124,31 @@ statsOverlay.style.fontFamily = 'monospace';
 statsOverlay.style.fontSize = '13px';
 statsOverlay.style.borderRadius = '6px';
 statsOverlay.style.minWidth = '120px';
-statsOverlay.innerHTML = `Verts: 0<br/>Faces: 0<br/><span style="display:inline-block;margin-top:4px;font-size:11px;color:#7da6cc;opacity:0.9">${APP_VERSION}</span>`;
+statsOverlay.style.maxWidth = '260px';
+
+// Active object info moved here from the navbar. `activeInfo` comes from
+// setupNavbar(); we restyle it for the panel and place it on top. It is a
+// sibling of the metrics line so per-frame stat updates don't wipe it.
+activeInfo.style.cssText = `
+  color: #3fa7ff; font-size: 12px; margin-bottom: 6px; min-height: 14px;
+  word-break: break-word; line-height: 1.3;
+`;
+const statsMetrics = document.createElement('div');
+statsMetrics.innerHTML = `Verts: 0<br/>Faces: 0<br/><span style="display:inline-block;margin-top:4px;font-size:11px;color:#7da6cc;opacity:0.9">${APP_VERSION}</span>`;
+statsOverlay.appendChild(activeInfo);
+statsOverlay.appendChild(statsMetrics);
 document.body.appendChild(statsOverlay);
 
 function updateStats(){
   if (!knotGeometry) {
-    statsOverlay.innerHTML = `Verts: 0<br/>Faces: 0<br/><span style="display:inline-block;margin-top:4px;font-size:11px;color:#7da6cc;opacity:0.9">${APP_VERSION}</span>`;
+    statsMetrics.innerHTML = `Verts: 0<br/>Faces: 0<br/><span style="display:inline-block;margin-top:4px;font-size:11px;color:#7da6cc;opacity:0.9">${APP_VERSION}</span>`;
     return;
   }
   const verts = knotGeometry.attributes && knotGeometry.attributes.position ? knotGeometry.attributes.position.count : 0;
   let faces = 0;
   if (knotGeometry.index) faces = Math.floor(knotGeometry.index.count / 3);
   else faces = Math.floor(verts / 3);
-  statsOverlay.innerHTML = `Verts: ${verts.toLocaleString()}<br/>Faces: ${faces.toLocaleString()}<br/><span style="display:inline-block;margin-top:4px;font-size:11px;color:#7da6cc;opacity:0.9">${APP_VERSION}</span>`;
+  statsMetrics.innerHTML = `Verts: ${verts.toLocaleString()}<br/>Faces: ${faces.toLocaleString()}<br/><span style="display:inline-block;margin-top:4px;font-size:11px;color:#7da6cc;opacity:0.9">${APP_VERSION}</span>`;
 }
 
 // top toolbar for ground style (moved into Environment panel)
@@ -972,6 +985,73 @@ function onWindowResize(){
   }
 }
 
+// --- Selection feedback: short bounce + color flash ("clicked" feel) ---
+// A single active bounce at a time. Stores the mesh's base Y so we can add a
+// temporary hop offset on top of the object's real transform and restore it.
+let selectBounce = null; // { mesh, start, duration, baseY, amp, baseColor, flashColor }
+
+function playSelectFeedback(mesh){
+  if (!mesh) return;
+  const restartingSame = selectBounce && selectBounce.mesh === mesh;
+  // Preserve the true resting state when re-triggering mid-animation so we
+  // don't bake an offset position or a flashed color into the new baseline.
+  let baseY, baseColor;
+  if (restartingSame){
+    baseY = selectBounce.baseY;
+    baseColor = selectBounce.baseColor;
+  } else {
+    // If another mesh was mid-bounce, restore it cleanly first.
+    if (selectBounce && selectBounce.mesh){
+      selectBounce.mesh.position.y = selectBounce.baseY;
+      selectBounce.mesh.scale.setScalar(1);
+      if (selectBounce.baseColor !== null && selectBounce.mesh.material && selectBounce.mesh.material.color){
+        selectBounce.mesh.material.color.setHex(selectBounce.baseColor);
+      }
+    }
+    baseY = mesh.position.y;
+    baseColor = (mesh.material && mesh.material.color) ? mesh.material.color.getHex() : null;
+  }
+  const r = (mesh.geometry && mesh.geometry.boundingSphere && mesh.geometry.boundingSphere.radius) || 1;
+  selectBounce = {
+    mesh,
+    start: performance.now(),
+    duration: 480,
+    baseY,
+    amp: Math.min(Math.max(r * 0.45, 0.25), 1.5), // hop height, clamped
+    baseColor,
+    flashColor: 0xffe066
+  };
+}
+
+function updateSelectBounce(){
+  if (!selectBounce) return;
+  const b = selectBounce;
+  // If the mesh was removed (deleted), drop the bounce.
+  if (!objects.find(o => o.mesh === b.mesh)){ selectBounce = null; return; }
+  const t = Math.min(1, (performance.now() - b.start) / b.duration);
+  // Single arch hop with a slight secondary bounce, decaying to rest.
+  const hop = Math.sin(t * Math.PI) * (1 - t * 0.35) + Math.max(0, Math.sin(t * Math.PI * 2)) * 0.15 * (1 - t);
+  b.mesh.position.y = b.baseY + hop * b.amp;
+  // Quick scale "pop" that settles back to 1.
+  const pop = 1 + 0.14 * Math.sin(t * Math.PI);
+  b.mesh.scale.setScalar(pop);
+  // Color flash that eases back to the original color.
+  if (b.baseColor !== null && b.mesh.material && b.mesh.material.color){
+    const k = Math.sin(t * Math.PI); // 0 -> 1 -> 0
+    const from = new THREE.Color(b.baseColor);
+    const to = new THREE.Color(b.flashColor);
+    b.mesh.material.color.copy(from).lerp(to, k);
+  }
+  if (t >= 1){
+    b.mesh.position.y = b.baseY;
+    b.mesh.scale.setScalar(1);
+    if (b.baseColor !== null && b.mesh.material && b.mesh.material.color){
+      b.mesh.material.color.setHex(b.baseColor);
+    }
+    selectBounce = null;
+  }
+}
+
 function animate(){
   requestAnimationFrame(animate);
   const now = performance.now() * 0.001;
@@ -979,6 +1059,9 @@ function animate(){
   if (params.autoRotate && knotMesh){
     knotMesh.rotation.y += params.rotationSpeed * 0.01;
   }
+
+  // selection bounce / click feedback
+  updateSelectBounce();
 
   controls.update();
 
@@ -1059,18 +1142,8 @@ renderer.domElement.addEventListener('pointerdown', (event) => {
     const rec = objects.find(o => o.mesh === mesh);
     if (rec) {
       setActive(rec.id);
-      // Highlight: store original color, set highlight, revert after 0.5s
-      const mat = mesh.material;
-      if (mat && mat.color) {
-        const orig = mat.color.getHex();
-        mat.color.set('#ffe066');
-        setTimeout(() => {
-          // Only revert if still same active object
-          if (objects.find(o => o.mesh === mesh)) {
-            mat.color.set(orig);
-          }
-        }, 500);
-      }
+      // Short bounce + color flash so the click is clearly felt.
+      playSelectFeedback(mesh);
     }
   }
 });
@@ -1109,7 +1182,7 @@ panels['About'].innerHTML = `
     </select>
   </div>
   <div style="margin-top:8px; font-size:11px; color:#7da6cc;">
-    <strong>Version:</strong> 1.1.3 — ${new Date().toISOString().split('T')[0]}
+    <strong>Version:</strong> ${APP_VERSION} — ${new Date().toISOString().split('T')[0]}
   </div>
   <div id="aboutContent" style="margin-top:10px">${getAboutHtml(getCurrentLanguage())}</div>
   <div style="margin-top:10px"><a href="#" id="aboutMore">More on knots</a></div>

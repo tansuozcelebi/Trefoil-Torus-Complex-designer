@@ -3,7 +3,7 @@ const authorPhoto = new URL('../assets/author.jpg', import.meta.url).href;
 
 const aboutContent = {
   en: `<h2>Trefoil Torus Complex Designer</h2>
-<p>Version 1.1.3 — Interactive 3D parametric surface designer</p>
+<p>Version ${__APP_VERSION__} — Interactive 3D parametric surface designer</p>
 <div style="display:flex; align-items:center; gap:12px; margin:12px 0;">
   <img src="${authorPhoto}" alt="Profile Photo" width="96" height="96" style="border-radius:50%; object-fit:cover; box-shadow:0 0 12px rgba(0,170,255,0.35);" onerror="this.onerror=null; this.src='https://unavatar.io/github/tansuozcelebi';"/>
   <div>
@@ -18,7 +18,7 @@ const aboutContent = {
 <p>The <strong>trefoil knot</strong> is the simplest non-trivial knot in mathematics, characterized by three crossings. It appears in nature, art, and physics. For more information, see <a href="https://en.wikipedia.org/wiki/Knot_theory" target="_blank" rel="noopener">Knot Theory on Wikipedia</a>.</p>`,
 
   tr: `<h2>Trefoil Torus Complex Designer</h2>
-<p>Sürüm 1.1.3 — İnteraktif 3D parametrik yüzey tasarım aracı</p>
+<p>Sürüm ${__APP_VERSION__} — İnteraktif 3D parametrik yüzey tasarım aracı</p>
 <div style="display:flex; align-items:center; gap:12px; margin:12px 0;">
   <img src="${authorPhoto}" alt="Profil Fotoğrafı" width="96" height="96" style="border-radius:50%; object-fit:cover; box-shadow:0 0 12px rgba(0,170,255,0.35);" onerror="this.onerror=null; this.src='https://unavatar.io/github/tansuozcelebi';"/>
   <div>
@@ -33,7 +33,7 @@ const aboutContent = {
 <p><strong>Trefoil düğümü</strong> matematikte en basit önemsiz olmayan düğümdür ve üç geçişle karakterizedir. Doğada, sanatta ve fizikte karşımıza çıkar. Daha fazla bilgi için <a href="https://en.wikipedia.org/wiki/Knot_theory" target="_blank" rel="noopener">Wikipedia'daki Düğüm Teorisi</a> sayfasına bakın.</p>`,
 
   es: `<h2>Trefoil Torus Complex Designer</h2>
-<p>Versión 1.1.3 — Diseñador interactivo de superficies paramétricas 3D</p>
+<p>Versión ${__APP_VERSION__} — Diseñador interactivo de superficies paramétricas 3D</p>
 <div style="display:flex; align-items:center; gap:12px; margin:12px 0;">
   <img src="${authorPhoto}" alt="Foto de perfil" width="96" height="96" style="border-radius:50%; object-fit:cover; box-shadow:0 0 12px rgba(0,170,255,0.35);" onerror="this.onerror=null; this.src='https://unavatar.io/github/tansuozcelebi';"/>
   <div>
@@ -48,7 +48,7 @@ const aboutContent = {
 <p>El <strong>nudo trébol</strong> es el nudo no trivial más simple en matemáticas, caracterizado por tres cruces. Aparece en la naturaleza, el arte y la física. Para más información, consulte <a href="https://es.wikipedia.org/wiki/Teor%C3%ADa_de_nudos" target="_blank" rel="noopener">Teoría de Nudos en Wikipedia</a>.</p>`,
 
   fr: `<h2>Trefoil Torus Complex Designer</h2>
-<p>Version 1.1.3 — Concepteur de surfaces paramétriques 3D interactif</p>
+<p>Version ${__APP_VERSION__} — Concepteur de surfaces paramétriques 3D interactif</p>
 <div style="display:flex; align-items:center; gap:12px; margin:12px 0;">
   <img src="${authorPhoto}" alt="Photo de profil" width="96" height="96" style="border-radius:50%; object-fit:cover; box-shadow:0 0 12px rgba(0,170,255,0.35);" onerror="this.onerror=null; this.src='https://unavatar.io/github/tansuozcelebi';"/>
   <div>
@@ -63,7 +63,7 @@ const aboutContent = {
 <p>Le <strong>nœud de trèfle</strong> est le nœud non trivial le plus simple en mathématiques, caractérisé par trois croisements. Il apparaît dans la nature, l'art et la physique. Pour plus d'informations, consultez <a href="https://fr.wikipedia.org/wiki/Th%C3%A9orie_des_n%C5%93uds" target="_blank" rel="noopener">Théorie des Nœuds sur Wikipédia</a>.</p>`,
 
   de: `<h2>Trefoil Torus Complex Designer</h2>
-<p>Version 1.1.3 — Interaktiver 3D-Designer für parametrische Oberflächen</p>
+<p>Version ${__APP_VERSION__} — Interaktiver 3D-Designer für parametrische Oberflächen</p>
 <div style="display:flex; align-items:center; gap:12px; margin:12px 0;">
   <img src="${authorPhoto}" alt="Profilfoto" width="96" height="96" style="border-radius:50%; object-fit:cover; box-shadow:0 0 12px rgba(0,170,255,0.35);" onerror="this.onerror=null; this.src='https://unavatar.io/github/tansuozcelebi';"/>
   <div>
@@ -101,7 +101,7 @@ const baseContent = (lang) => {
   const link = knotTheoryLinks[lang] || { title: 'Knot Theory', url: 'https://en.wikipedia.org/wiki/Knot_theory' };
   
   return `<h2>Trefoil Torus Complex Designer</h2>
-<p>Version 1.1.3 — Interactive 3D parametric surface designer</p>
+<p>Version ${__APP_VERSION__} — Interactive 3D parametric surface designer</p>
 <div style="display:flex; align-items:center; gap:12px; margin:12px 0;">
   <img src="${authorPhoto}" alt="Profile" width="96" height="96" style="border-radius:50%; object-fit:cover; box-shadow:0 0 12px rgba(0,170,255,0.35);" onerror="this.onerror=null; this.src='https://unavatar.io/github/tansuozcelebi';"/>
   <div>
