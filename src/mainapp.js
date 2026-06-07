@@ -110,7 +110,8 @@ const initExportPanel = () => {
 };
 
 // Stats overlay (bottom-left): active object info + vertex & face counts + version
-const APP_VERSION = 'v1.1.3';
+// Version is injected by Vite (define) from package.json and bumped on each build.
+const APP_VERSION = 'v' + (typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.0.0');
 const statsOverlay = document.createElement('div');
 statsOverlay.style.position = 'fixed';
 statsOverlay.style.left = '12px';
@@ -1181,7 +1182,7 @@ panels['About'].innerHTML = `
     </select>
   </div>
   <div style="margin-top:8px; font-size:11px; color:#7da6cc;">
-    <strong>Version:</strong> 1.1.3 — ${new Date().toISOString().split('T')[0]}
+    <strong>Version:</strong> ${APP_VERSION} — ${new Date().toISOString().split('T')[0]}
   </div>
   <div id="aboutContent" style="margin-top:10px">${getAboutHtml(getCurrentLanguage())}</div>
   <div style="margin-top:10px"><a href="#" id="aboutMore">More on knots</a></div>
