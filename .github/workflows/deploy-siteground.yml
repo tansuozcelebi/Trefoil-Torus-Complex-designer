@@ -6,15 +6,18 @@ name: Deploy to SiteGround
 # Copy this file into any project's .github/workflows/ and set these six
 # repository secrets (Settings -> Secrets and variables -> Actions -> Secrets):
 #
-#   SITEGROUND_SSH_HOST        SSH host (e.g. giomXX.siteground.biz or the IP)
-#   SITEGROUND_SSH_USER        SSH username (from Site Tools -> Devs -> SSH)
+#   SITEGROUND_SSH_HOST        SSH host from Site Tools -> Devs -> SSH
+#                              (the server host/IP, NOT your website domain)
+#   SITEGROUND_SSH_USER        SSH username (e.g. u1234-abcdefgh)
 #   SITEGROUND_SSH_PORT        SSH port (SiteGround default: 18765)
 #   SITEGROUND_SSH_KEY         Private key, full contents (passphrase-protected ok)
 #   SITEGROUND_SSH_PASSPHRASE  Passphrase for the private key
 #   SITEGROUND_DEPLOY_PATH     Target dir, e.g. ~/www/yourdomain.com/public_html
 #
-# Assumes `npm run build` outputs a static site to dist/. The job is skipped
-# (stays green) until SITEGROUND_SSH_HOST is set.
+# The env vars below use the exact secret names (no aliases) so the job log
+# shows e.g. "SITEGROUND_SSH_HOST: ***". The "***" masking means the secret
+# was read successfully. Assumes `npm run build` outputs to dist/. The job is
+# skipped (stays green) until SITEGROUND_SSH_HOST is set.
 # ============================================================================
 
 on:
@@ -32,44 +35,43 @@ jobs:
     runs-on: ubuntu-latest
     environment: siteground
     env:
-      # Gating + connection vars shared by all steps.
-      SG_HOST: ${{ secrets.SITEGROUND_SSH_HOST }}
-      SG_USER: ${{ secrets.SITEGROUND_SSH_USER }}
-      SG_PORT: ${{ secrets.SITEGROUND_SSH_PORT }}
-      SG_REMOTE_DIR: ${{ secrets.SITEGROUND_DEPLOY_PATH }}
+      SITEGROUND_SSH_HOST: ${{ secrets.SITEGROUND_SSH_HOST }}
+      SITEGROUND_SSH_USER: ${{ secrets.SITEGROUND_SSH_USER }}
+      SITEGROUND_SSH_PORT: ${{ secrets.SITEGROUND_SSH_PORT }}
+      SITEGROUND_DEPLOY_PATH: ${{ secrets.SITEGROUND_DEPLOY_PATH }}
     steps:
       - name: Check configuration
         run: |
-          if [ -z "${SG_HOST}" ]; then
+          if [ -z "${SITEGROUND_SSH_HOST}" ]; then
             echo "::notice::SITEGROUND_SSH_HOST secret not set — skipping deploy. Configure deploy secrets to enable."
           fi
 
       - name: Checkout
-        if: env.SG_HOST != ''
+        if: env.SITEGROUND_SSH_HOST != ''
         uses: actions/checkout@v4
 
       - name: Setup Node
-        if: env.SG_HOST != ''
+        if: env.SITEGROUND_SSH_HOST != ''
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
 
       - name: Install dependencies
-        if: env.SG_HOST != ''
+        if: env.SITEGROUND_SSH_HOST != ''
         run: npm ci
 
       - name: Build
-        if: env.SG_HOST != ''
+        if: env.SITEGROUND_SSH_HOST != ''
         run: npm run build
 
       - name: Load SSH key into agent
-        if: env.SG_HOST != ''
+        if: env.SITEGROUND_SSH_HOST != ''
         run: |
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
 
           # Write the private key (ensure a trailing newline).
-          printf '%s\n' "${SG_KEY}" > ~/.ssh/sg_key
+          printf '%s\n' "${SITEGROUND_SSH_KEY}" > ~/.ssh/sg_key
           chmod 600 ~/.ssh/sg_key
 
           # Start ssh-agent and persist it for the following steps.
@@ -79,7 +81,7 @@ jobs:
 
           # Feed the passphrase to ssh-add non-interactively via an askpass
           # helper. SSH_ASKPASS_REQUIRE=force works without a tty/DISPLAY.
-          printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$SG_PASSPHRASE"\n' > ~/.ssh/askpass.sh
+          printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$SITEGROUND_SSH_PASSPHRASE"\n' > ~/.ssh/askpass.sh
           chmod 700 ~/.ssh/askpass.sh
           if ! DISPLAY=:0 SSH_ASKPASS="$HOME/.ssh/askpass.sh" SSH_ASKPASS_REQUIRE=force \
                ssh-add ~/.ssh/sg_key; then
@@ -88,28 +90,29 @@ jobs:
           fi
           rm -f ~/.ssh/sg_key ~/.ssh/askpass.sh
         env:
-          SG_KEY: ${{ secrets.SITEGROUND_SSH_KEY }}
-          SG_PASSPHRASE: ${{ secrets.SITEGROUND_SSH_PASSPHRASE }}
+          SITEGROUND_SSH_KEY: ${{ secrets.SITEGROUND_SSH_KEY }}
+          SITEGROUND_SSH_PASSPHRASE: ${{ secrets.SITEGROUND_SSH_PASSPHRASE }}
 
       - name: Verify SSH connection
-        if: env.SG_HOST != ''
+        if: env.SITEGROUND_SSH_HOST != ''
         run: |
-          echo "Connecting to ${SG_USER}@${SG_HOST}:${SG_PORT:-18765} ..."
-          # accept-new auto-trusts the host on first connect (no ssh-keyscan
-          # needed). Errors are visible so failures are diagnosable: a timeout
-          # means host/port wrong or the runner IP is blocked by SiteGround;
+          echo "Connecting to ${SITEGROUND_SSH_USER}@${SITEGROUND_SSH_HOST}:${SITEGROUND_SSH_PORT:-18765} ..."
+          # -4 forces IPv4. accept-new auto-trusts the host on first connect.
+          # Errors are visible so failures are diagnosable: a timeout means the
+          # host/port is wrong or the runner IP is blocked by SiteGround;
           # "Permission denied" means a key/user problem.
-          ssh -4 -p "${SG_PORT:-18765}" \
+          ssh -4 -p "${SITEGROUND_SSH_PORT:-18765}" \
             -o StrictHostKeyChecking=accept-new \
             -o ConnectTimeout=20 -o BatchMode=yes \
-            "${SG_USER}@${SG_HOST}" 'echo "SSH OK: connected as $(whoami)@$(hostname)"'
+            "${SITEGROUND_SSH_USER}@${SITEGROUND_SSH_HOST}" \
+            'echo "SSH OK: connected as $(whoami)@$(hostname)"'
 
       - name: Deploy dist/ to SiteGround
-        if: env.SG_HOST != ''
+        if: env.SITEGROUND_SSH_HOST != ''
         run: |
           rsync -avz --delete \
             --exclude '.well-known' \
-            -e "ssh -4 -p ${SG_PORT:-18765} -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20" \
+            -e "ssh -4 -p ${SITEGROUND_SSH_PORT:-18765} -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20" \
             dist/ \
-            "${SG_USER}@${SG_HOST}:${SG_REMOTE_DIR}/"
-          echo "Deployed to ${SG_HOST}:${SG_REMOTE_DIR}"
+            "${SITEGROUND_SSH_USER}@${SITEGROUND_SSH_HOST}:${SITEGROUND_DEPLOY_PATH}/"
+          echo "Deployed to ${SITEGROUND_SSH_HOST}:${SITEGROUND_DEPLOY_PATH}"
