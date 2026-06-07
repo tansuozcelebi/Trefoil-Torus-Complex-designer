@@ -77,9 +77,11 @@ jobs:
           EOF
           chmod 700 ~/.ssh/askpass.sh
 
-          SG_PASSPHRASE="${SG_PASSPHRASE}" \
-          DISPLAY=:0 SSH_ASKPASS="$HOME/.ssh/askpass.sh" SSH_ASKPASS_REQUIRE=force \
-            ssh-add ~/.ssh/sg_key
+          # Add the key to the agent using passphrase piped via stdin
+          echo "${SG_PASSPHRASE}" | ssh-add -v ~/.ssh/sg_key 2>&1 || {
+            echo "ERROR: Failed to add SSH key to agent" >&2
+            exit 1
+          }
 
           # The plaintext key file is no longer needed; agent holds it.
           rm -f ~/.ssh/sg_key ~/.ssh/askpass.sh
