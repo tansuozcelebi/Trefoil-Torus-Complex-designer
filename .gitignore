@@ -3,5 +3,4 @@ dist/
 .env
 
 # Local deploy secrets
-deploy/deploy.env
 deploy/siteground.env
