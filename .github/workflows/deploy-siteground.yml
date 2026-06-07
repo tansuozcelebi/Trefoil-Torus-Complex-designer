@@ -84,6 +84,7 @@ jobs:
           # The plaintext key file is no longer needed; agent holds it.
           rm -f ~/.ssh/sg_key ~/.ssh/askpass.sh
         env:
+          SG_HOST: ${{ secrets.SITEGROUND_SSH_HOST }}
           SG_KEY: ${{ secrets.SITEGROUND_SSH_KEY }}
           SG_PORT: ${{ secrets.SITEGROUND_SSH_PORT }}
           SG_PASSPHRASE: ${{ secrets.SITEGROUND_SSH_PASSPHRASE }}
@@ -97,6 +98,7 @@ jobs:
             dist/ \
             "${SG_USER}@${SG_HOST}:${SG_REMOTE_DIR}/"
         env:
+          SG_HOST: ${{ secrets.SITEGROUND_SSH_HOST }}
           SG_USER: ${{ secrets.SITEGROUND_SSH_USER }}
           SG_PORT: ${{ secrets.SITEGROUND_SSH_PORT }}
           SG_REMOTE_DIR: ${{ secrets.SITEGROUND_DEPLOY_PATH }}
