@@ -76,13 +76,10 @@ export function setupNavbar() {
   `;
   navBar.appendChild(tabsContainer);
 
-  // Active info display
+  // Active object info now lives in the bottom-left stats overlay (see mainapp.js).
+  // We still expose an element so callers have a stable target to write into;
+  // mainapp relocates/styles it inside the stats panel.
   const activeInfo = document.createElement('div');
-  activeInfo.style.cssText = `
-    margin-left: 12px; color: #3fa7ff; font-size: 12px;
-    flex-shrink: 0; order: -1;
-  `;
-  navBar.appendChild(activeInfo);
 
   // Helper: toggle mobile sidebar
   function toggleMobileSidebar(open) {
@@ -339,14 +336,8 @@ export function setupNavbar() {
     hamburgerBtn.style.display = isMobile ? 'block' : 'none';
     if (isMobile) {
       tabsContainer.style.display = 'none';
-      activeInfo.style.fontSize = '10px';
-      activeInfo.style.marginLeft = '6px';
-      activeInfo.style.flex = '1';
     } else {
       tabsContainer.style.display = 'flex';
-      activeInfo.style.fontSize = '12px';
-      activeInfo.style.marginLeft = '12px';
-      activeInfo.style.flex = '0';
       toggleMobileSidebar(false);
     }
   }
