@@ -2,6 +2,11 @@ name: Deploy to SiteGround
 
 # Builds the static site and uploads it to SiteGround via rsync over SSH.
 # Runs on every push to main, and can be triggered manually.
+#
+# Skips cleanly (job stays green) until the required secrets/variables are
+# configured. Required:
+#   secrets:   SG_SSH_PRIVATE_KEY, SG_HOST, SG_USER, SG_PORT
+#   variables: SG_REMOTE_DIR
 on:
   push:
     branches: [main]
@@ -16,33 +21,46 @@ jobs:
     name: Build & rsync
     runs-on: ubuntu-latest
     environment: siteground
+    env:
+      SG_HOST: ${{ secrets.SG_HOST }}
     steps:
+      - name: Check configuration
+        run: |
+          if [ -z "${SG_HOST}" ]; then
+            echo "::notice::SG_HOST secret not set — skipping SiteGround deploy. Configure deploy secrets to enable."
+          fi
+
       - name: Checkout
+        if: env.SG_HOST != ''
         uses: actions/checkout@v4
 
       - name: Setup Node
+        if: env.SG_HOST != ''
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
 
       - name: Install dependencies
+        if: env.SG_HOST != ''
         run: npm ci
 
       - name: Build
+        if: env.SG_HOST != ''
         run: npm run build
 
       - name: Configure SSH key
+        if: env.SG_HOST != ''
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SG_SSH_PRIVATE_KEY }}" > ~/.ssh/sg_key
           chmod 600 ~/.ssh/sg_key
           ssh-keyscan -p "${SG_PORT:-18765}" -H "$SG_HOST" >> ~/.ssh/known_hosts 2>/dev/null
         env:
-          SG_HOST: ${{ secrets.SG_HOST }}
           SG_PORT: ${{ secrets.SG_PORT }}
 
       - name: Deploy dist/ to SiteGround
+        if: env.SG_HOST != ''
         run: |
           rsync -avz --delete \
             --exclude '.well-known' \
@@ -50,7 +68,6 @@ jobs:
             dist/ \
             "${SG_USER}@${SG_HOST}:${SG_REMOTE_DIR}/"
         env:
-          SG_HOST: ${{ secrets.SG_HOST }}
           SG_USER: ${{ secrets.SG_USER }}
           SG_PORT: ${{ secrets.SG_PORT }}
           SG_REMOTE_DIR: ${{ vars.SG_REMOTE_DIR }}
