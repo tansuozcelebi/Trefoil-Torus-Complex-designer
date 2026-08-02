@@ -20,9 +20,11 @@ name: Deploy to SiteGround
 # skipped (stays green) until SITEGROUND_SSH_HOST is set.
 # ============================================================================
 
+# NOTE: SiteGround blocks SSH from GitHub Actions runner IPs (connections
+# time out), so this workflow is manual-only — it does NOT run on push. Deploy
+# from your own machine with deploy/siteground-deploy.sh instead. Kept here so
+# it can be run on demand (e.g. from a whitelisted/self-hosted runner).
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 concurrency:
