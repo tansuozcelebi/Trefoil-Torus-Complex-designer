@@ -216,12 +216,14 @@ export function setupNavbar() {
 
     // Create panel
     const panel = document.createElement('div');
+    panel.className = 'tc-panel';
     panel.style.cssText = `
       position: fixed; transform: translateY(-8px) scale(0.98); z-index: 999;
       background: rgba(15,15,20,0.65); backdrop-filter: blur(8px) saturate(120%);
       border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 10px 28px rgba(0,0,0,0.35);
       color: #fff; padding: 12px; border-radius: 10px; min-width: 320px;
       max-height: 60vh; overflow: auto; opacity: 0; display: none;
+      font-family: var(--tc-font); font-size: 13px; line-height: 1.45;
       transition: transform 360ms cubic-bezier(0.2, 0.8, 0.2, 1.2), opacity 360ms cubic-bezier(0.2, 0.8, 0.2, 1);
     `;
     document.body.appendChild(panel);

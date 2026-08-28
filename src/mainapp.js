@@ -36,6 +36,25 @@ style.textContent = `
   :root { --tc-font: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; }
   body { font-family: var(--tc-font); margin: 0; }
   button { font-family: var(--tc-font); }
+
+  /* Unified typography for all pop-out panels (fixes font type/size drift) */
+  .tc-panel { font-family: var(--tc-font); font-size: 13px; line-height: 1.45; }
+  .tc-panel * { font-family: var(--tc-font) !important; }
+  .tc-panel h1 { font-size: 17px; font-weight: 600; margin: 0 0 8px; line-height: 1.3; }
+  .tc-panel h2 { font-size: 16px; font-weight: 600; margin: 0 0 8px; line-height: 1.3; }
+  .tc-panel h3 { font-size: 14px; font-weight: 600; margin: 12px 0 6px; line-height: 1.3; }
+  .tc-panel h4 { font-size: 13px; font-weight: 600; margin: 10px 0 4px; line-height: 1.3; }
+  .tc-panel p { font-size: 13px; margin: 6px 0; line-height: 1.5; }
+  .tc-panel label,
+  .tc-panel select,
+  .tc-panel option,
+  .tc-panel input,
+  .tc-panel textarea,
+  .tc-panel button { font-size: 13px; line-height: 1.4; }
+  .tc-panel small { font-size: 11px; }
+  .tc-panel strong { font-weight: 600; }
+  /* dat.GUI embedded in the Object panel: match the app font */
+  .tc-panel .dg, .tc-panel .dg * { font-family: var(--tc-font) !important; }
   /* panels and nav
      ensure high-contrast text and friendlier link color in About */
   div[style] a { color: #7fbfff; text-decoration: underline; }
