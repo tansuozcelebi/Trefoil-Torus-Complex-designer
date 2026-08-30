@@ -11,7 +11,20 @@ import { tabs as TabsConfig } from './tabs.ts';
 export function setupNavbar() {
   const panels = {};
   const panelHideTimers = {};
-  
+
+  // Inline SVG icons per tab (stroke-based, inherit currentColor).
+  const svgIcon = (inner) => `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto;opacity:0.85">${inner}</svg>`;
+  const TAB_ICONS = {
+    Home: svgIcon('<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/>'),
+    Environment: svgIcon('<path d="M3 19h18"/><path d="M6 19l5-9 3 5 2-3 4 7"/>'),
+    Scene: svgIcon('<path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="M3 13l9 5 9-5"/>'),
+    Object: svgIcon('<path d="M12 3 4 7v10l8 4 8-4V7l-8-4Z"/><path d="M4 7l8 4 8-4M12 11v10"/>'),
+    Export: svgIcon('<path d="M12 3v12"/><path d="M8 11l4 4 4-4"/><path d="M4 19h16"/>'),
+    About: svgIcon('<circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r="0.8" fill="currentColor" stroke="none"/>'),
+    Help: svgIcon('<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.8.4-1 .9-1 1.7"/><circle cx="12" cy="16.5" r="0.8" fill="currentColor" stroke="none"/>')
+  };
+  const GLOBE_SVG = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" style="flex:0 0 auto;opacity:0.85"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg>`;
+
   // Top navigation bar
   const navBar = document.createElement('div');
   navBar.style.cssText = `
@@ -101,13 +114,15 @@ export function setupNavbar() {
     toggleMobileSidebar(mobileSidebar.dataset.open !== 'true');
   });
 
-  // Helper: create styled tab button
-  function makeTab(label) {
+  // Helper: create styled tab button (icon + label)
+  function makeTab(label, name) {
     const btn = document.createElement('button');
-    btn.textContent = label;
+    const icon = (name && TAB_ICONS[name]) ? TAB_ICONS[name] : '';
+    btn.innerHTML = `${icon}<span class="tc-tab-label">${label}</span>`;
     btn.style.cssText = `
-      padding: 6px 10px; border: none; background: transparent;
-      color: #fff; cursor: pointer; border-radius: 4px; position: relative;
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 6px 11px; border: none; background: transparent;
+      color: #fff; cursor: pointer; border-radius: 6px; position: relative;
       transition: background 0.25s ease, box-shadow 0.3s ease, transform 0.18s ease;
       box-shadow: 0 0 0px rgba(0,180,255,0); white-space: nowrap;
     `;
@@ -157,7 +172,7 @@ export function setupNavbar() {
     if (!panels[name]) return;
     
     const triggerBtn = document.querySelector(`button[data-tab="${name}"]`) ||
-                       Array.from(document.querySelectorAll('button')).find(b => b.textContent === name);
+                       Array.from(document.querySelectorAll('button[data-tab]')).find(b => b.dataset.tab === name);
     if (triggerBtn) {
       const rect = triggerBtn.getBoundingClientRect();
       const minW = 320;
@@ -181,7 +196,7 @@ export function setupNavbar() {
     
     // Update active styling
     Array.from(document.querySelectorAll('button[data-tab]')).forEach(b => {
-      if (b.textContent === name) {
+      if (b.dataset.tab === name) {
         b.dataset.active = '1';
         b.style.background = 'rgba(35,120,200,0.28)';
         b.style.boxShadow = '0 0 10px rgba(0,200,255,0.75), 0 0 24px rgba(0,140,255,0.45)';
@@ -196,7 +211,7 @@ export function setupNavbar() {
   // Add tab button
   function addTabButton(name) {
     const currentLang = getCurrentLanguage();
-    const btn = makeTab(getTabLabel(name, currentLang));
+    const btn = makeTab(getTabLabel(name, currentLang), name);
     btn.dataset.tab = name;
     btn.addEventListener('click', () => {
       showTab(name);
@@ -208,7 +223,7 @@ export function setupNavbar() {
     tabsContainer.appendChild(btn);
 
     // Mobile version
-    const mobileBtn = makeTab(getTabLabel(name, currentLang));
+    const mobileBtn = makeTab(getTabLabel(name, currentLang), name);
     mobileBtn.dataset.tab = name;
     mobileBtn.style.cssText = `width: 100%; margin-bottom: 8px; text-align: left; padding: 12px 16px; ${mobileBtn.style.cssText}`;
     mobileBtn.addEventListener('click', () => { showTab(name); toggleMobileSidebar(false); });
@@ -243,10 +258,12 @@ export function setupNavbar() {
     setLanguage(newLang);
     const langBtn = document.querySelector('button[data-lang-selector]');
     const langData = languages.find(l => l.code === newLang);
-    if (langBtn && langData) langBtn.innerHTML = `${langData.flag} ${newLang.toUpperCase()}`;
-    
+    if (langBtn && langData) langBtn.innerHTML = `${GLOBE_SVG}<span>${newLang.toUpperCase()}</span>`;
+
     document.querySelectorAll('button[data-tab]').forEach(btn => {
-      btn.textContent = getTabLabel(btn.dataset.tab, newLang);
+      const lbl = btn.querySelector('.tc-tab-label');
+      if (lbl) lbl.textContent = getTabLabel(btn.dataset.tab, newLang);
+      else btn.textContent = getTabLabel(btn.dataset.tab, newLang);
     });
     
     if (panels['Help']) panels['Help'].innerHTML = getHelpHtml(newLang);
@@ -265,8 +282,9 @@ export function setupNavbar() {
   
   const langBtn = document.createElement('button');
   langBtn.setAttribute('data-lang-selector', 'true');
-  langBtn.innerHTML = `${currentLangData.flag} ${currentLangData.code.toUpperCase()}`;
+  langBtn.innerHTML = `${GLOBE_SVG}<span>${currentLangData.code.toUpperCase()}</span>`;
   langBtn.style.cssText = `
+    display: inline-flex; align-items: center; gap: 6px;
     padding: 6px 10px; background: rgba(60,60,70,0.9); color: #fff;
     border: 1px solid rgba(100,100,120,0.5); border-radius: 6px; cursor: pointer;
     font-size: 11px; font-weight: 600; transition: all 0.2s;
