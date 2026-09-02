@@ -31,6 +31,7 @@ export default defineConfig({
           // Three.js addons/examples
           'three-addons': [
             'three/examples/jsm/controls/OrbitControls.js',
+            'three/examples/jsm/controls/TransformControls.js',
             'three/examples/jsm/objects/Reflector.js'
           ],
           // React libraries

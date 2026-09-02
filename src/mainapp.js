@@ -14,6 +14,7 @@ import { setupNavbar } from './ui/navbar.js';
 import { TrefoilCurve } from './objects/trefoil.js';
 import { SeptafoilCurve } from './objects/septafoil.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
 import { Reflector } from 'three/examples/jsm/objects/Reflector.js';
 import { saveAs } from 'file-saver';
 import { createSea as makeSea } from './grounds/sea.js';
@@ -214,7 +215,7 @@ pmremGenerator.compileEquirectangularShader();
 const { ambient, spot } = createLights(scene);
 
 // Ground + shadow receiver
-const { ground, shadowReceiver, groundSize } = createBaseGround(scene, renderer);
+const { ground, shadowReceiver, shadowCatcher, groundSize } = createBaseGround(scene, renderer);
 
 let reflector = null;
 let seaObj = null; // {mesh, setTime, resize}
@@ -287,6 +288,7 @@ function setActive(id){
   knotGeometry = rec.geometry || null;
   knotMaterial = rec.material || null;
   updateStats();
+  try { if (typeof attachGizmo === 'function') attachGizmo(); } catch(e) {}
   // ensure Controls show
   try { if (window.showControlsGUI) window.showControlsGUI(); } catch(e) {}
 }
@@ -590,7 +592,7 @@ renderer.domElement.addEventListener('pointermove', handleUCSPointerMove);
 renderer.domElement.addEventListener('pointerdown', handleUCSPointerDown);
 
 // Setup GUI menu (objectType at the top)
-const { gui, viewFolder } = setupGUI(
+const { gui, viewFolder, sixFolder } = setupGUI(
   params,
   rebuild,
   updateMaterial,
@@ -655,6 +657,63 @@ viewFolder.__controllers.forEach(c => { /* keep existing references */ });
 viewFolder.__controllers = viewFolder.__controllers || [];
 viewFolder.add(params, 'autoRotate').onChange((v) => { controls.autoRotate = v; saveParamsToActive(); });
 viewFolder.add(params, 'rotationSpeed', 0, 2, 0.01).onChange((v) => { controls.autoRotateSpeed = v * 10; saveParamsToActive(); });
+
+// --- Transform gizmo: translate / rotate the selected object directly ---
+if (params.showGizmo === undefined) params.showGizmo = true;
+if (!params.gizmoMode) params.gizmoMode = 'translate';
+const transformControls = new TransformControls(camera, renderer.domElement);
+transformControls.setSize(0.85);
+transformControls.setMode(params.gizmoMode);
+// Don't orbit the camera while dragging a gizmo handle.
+transformControls.addEventListener('dragging-changed', (e) => { controls.enabled = !e.value; });
+// Mirror gizmo edits back into params (world units / degrees) so the GUI,
+// the object record and later rebuilds stay in sync. The wireframe is a child
+// of the mesh, so it follows automatically.
+transformControls.addEventListener('objectChange', () => {
+  if (!knotMesh) return;
+  params.posX = +knotMesh.position.x.toFixed(3);
+  params.posY = +knotMesh.position.y.toFixed(3);
+  params.posZ = +knotMesh.position.z.toFixed(3);
+  params.rotX = +THREE.MathUtils.radToDeg(knotMesh.rotation.x).toFixed(2);
+  params.rotY = +THREE.MathUtils.radToDeg(knotMesh.rotation.y).toFixed(2);
+  params.rotZ = +THREE.MathUtils.radToDeg(knotMesh.rotation.z).toFixed(2);
+  try { gui.updateDisplay(); } catch(e) {}
+  saveParamsToActive();
+});
+scene.add(transformControls);
+
+function attachGizmo(){
+  if (!transformControls) return;
+  if (params.showGizmo && knotMesh){
+    transformControls.attach(knotMesh);
+    transformControls.visible = true;
+    transformControls.enabled = true;
+  } else {
+    transformControls.detach();
+    transformControls.visible = false;
+    transformControls.enabled = false;
+  }
+}
+function setGizmoMode(mode){
+  params.gizmoMode = mode;
+  transformControls.setMode(mode);
+  saveParamsToActive();
+}
+
+// Keyboard: G = move (translate), R = rotate (free keys, no conflict)
+window.addEventListener('keydown', (e) => {
+  const tag = ((e.target && e.target.tagName) || '').toLowerCase();
+  if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+  const k = e.key.toLowerCase();
+  if (k === 'g') setGizmoMode('translate');
+  else if (k === 'r') setGizmoMode('rotate');
+});
+
+// GUI toggles for the gizmo (in the 6-axis folder)
+try {
+  sixFolder.add(params, 'showGizmo').name('Transform Gizmo').onChange(() => { attachGizmo(); saveParamsToActive(); });
+  sixFolder.add(params, 'gizmoMode', ['translate', 'rotate']).name('Gizmo Mode').onChange((v) => setGizmoMode(v));
+} catch(e) {}
 
 function createMaterial(){
   const mat = new THREE.MeshPhysicalMaterial({
@@ -822,6 +881,8 @@ function rebuild(){
     rec2.material = knotMaterial;
     rec2.wireframe = wireframeMesh;
   }
+  // rebuild replaced knotMesh — re-point the transform gizmo at it.
+  try { if (typeof attachGizmo === 'function') attachGizmo(); } catch(e) {}
 }
 
 function applyTransform(){
@@ -925,11 +986,14 @@ function setGroundStyle(style){
   if (funnelObj){ scene.remove(funnelObj.mesh); funnelObj.dispose?.(); funnelObj = null; }
   if (reflector) { reflector.visible = false; }
   ground.visible = false;
+  // Shadow-catcher off by default; enabled only for surfaces that can't
+  // receive shadows on their own material (the sea shader).
+  if (shadowCatcher) shadowCatcher.visible = false;
 
   if (style === 'Flat'){
     ground.visible = true;
     ground.receiveShadow = true;
-    // Shadows now fall directly on the checkerboard ground
+    // Shadows fall directly on the checkerboard ground (the main plane)
     if (shadowReceiver) {
       shadowReceiver.visible = true;
       if (!scene.children.includes(shadowReceiver)) scene.add(shadowReceiver);
@@ -939,8 +1003,12 @@ function setGroundStyle(style){
     // enlarge sea coverage to feel like an infinite plane
     seaObj.mesh.scale.set(8,8,8);
     scene.add(seaObj.mesh);
-    // Let shadow fall onto the sea surface itself
-    if (shadowReceiver) shadowReceiver.visible = false;
+    // The sea uses a raw-GLSL ShaderMaterial that cannot receive shadows, so
+    // catch the object's shadow on a coplanar invisible plane at sea level.
+    if (shadowCatcher) {
+      shadowCatcher.position.y = seaObj.mesh.position.y + 0.02;
+      shadowCatcher.visible = true;
+    }
     ground.visible = false;
   } else if (style === 'Math'){
     mathObj = makeMath(ground.position.y);
