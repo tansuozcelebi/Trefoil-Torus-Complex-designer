@@ -1,0 +1,77 @@
+name: Deploy to SiteGround (FTP)
+
+# ============================================================================
+# SiteGround deploy over FTPS.
+#
+# SiteGround blocks SSH (port 18765) from GitHub Actions runner IPs, so the
+# SSH workflow times out. FTP/FTPS (port 21) is usually reachable, so this
+# builds the static site and uploads dist/ over FTPS instead.
+#
+# Set these repository secrets (Settings -> Secrets and variables -> Actions):
+#   SITEGROUND_FTP_HOST      FTP host (Site Tools -> Site -> FTP Accounts),
+#                            e.g. ftp.yourdomain.com or the server IP
+#   SITEGROUND_FTP_USER      FTP username
+#   SITEGROUND_FTP_PASSWORD  FTP password
+#   SITEGROUND_FTP_DIR       Target directory, MUST end with "/".
+#                            If the FTP account is scoped to the site, use "/".
+#                            Otherwise e.g. "public_html/" or
+#                            "www/yourdomain.com/public_html/".
+#
+# The job is skipped (stays green) until SITEGROUND_FTP_HOST is set.
+# ============================================================================
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-siteground-ftp
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Build & FTP upload
+    runs-on: ubuntu-latest
+    environment: siteground
+    env:
+      SITEGROUND_FTP_HOST: ${{ secrets.SITEGROUND_FTP_HOST }}
+    steps:
+      - name: Check configuration
+        run: |
+          if [ -z "${SITEGROUND_FTP_HOST}" ]; then
+            echo "::notice::SITEGROUND_FTP_HOST secret not set — skipping FTP deploy. Configure FTP secrets to enable."
+          fi
+
+      - name: Checkout
+        if: env.SITEGROUND_FTP_HOST != ''
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        if: env.SITEGROUND_FTP_HOST != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        if: env.SITEGROUND_FTP_HOST != ''
+        run: npm ci
+
+      - name: Build
+        if: env.SITEGROUND_FTP_HOST != ''
+        run: npm run build
+
+      - name: Upload dist/ over FTPS
+        if: env.SITEGROUND_FTP_HOST != ''
+        uses: SamKirkland/FTP-Deploy-Action@4.3.5
+        with:
+          server: ${{ secrets.SITEGROUND_FTP_HOST }}
+          username: ${{ secrets.SITEGROUND_FTP_USER }}
+          password: ${{ secrets.SITEGROUND_FTP_PASSWORD }}
+          protocol: ftps
+          port: 21
+          local-dir: ./dist/
+          server-dir: ${{ secrets.SITEGROUND_FTP_DIR }}
+          # Mirror the build without wiping unrelated files on the host.
+          dangerous-clean-slate: false
