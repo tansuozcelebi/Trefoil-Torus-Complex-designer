@@ -31,5 +31,21 @@ export function createBaseGround(scene, renderer){
   // No separate shadow receiver - shadows now fall directly on the checkerboard ground
   const shadowReceiver = null;
 
-  return { ground, shadowReceiver, groundSize };
+  // Invisible shadow-catcher for surfaces whose own material can't receive
+  // shadows (e.g. the raw-GLSL sea shader). ShadowMaterial paints ONLY the
+  // shadowed region as a translucent dark patch and is fully transparent
+  // elsewhere, so it can sit coplanar just above such a surface to make the
+  // object's shadow land on the plane the user actually sees. Repositioned
+  // and toggled per ground style in mainapp.js; hidden by default.
+  const shadowCatcher = new THREE.Mesh(
+    new THREE.PlaneGeometry(groundSize * 4, groundSize * 4),
+    new THREE.ShadowMaterial({ opacity: 0.42 })
+  );
+  shadowCatcher.rotation.x = -Math.PI / 2;
+  shadowCatcher.position.y = ground.position.y + 0.02;
+  shadowCatcher.receiveShadow = true;
+  shadowCatcher.visible = false;
+  scene.add(shadowCatcher);
+
+  return { ground, shadowReceiver, shadowCatcher, groundSize };
 }
