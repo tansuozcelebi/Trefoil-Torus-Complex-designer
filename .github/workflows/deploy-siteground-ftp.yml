@@ -64,7 +64,7 @@ jobs:
 
       - name: Upload dist/ over FTPS
         if: env.SITEGROUND_FTP_HOST != ''
-        uses: SamKirkland/FTP-Deploy-Action@4.3.5
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.SITEGROUND_FTP_HOST }}
           username: ${{ secrets.SITEGROUND_FTP_USER }}
