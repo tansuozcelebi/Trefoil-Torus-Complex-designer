@@ -21,6 +21,7 @@ import { createSea as makeSea } from './grounds/sea.js';
 import { createMathSurface as makeMath } from './grounds/math.js';
 import { createRoom as makeRoom } from './grounds/room.js';
 import { createFunnel as makeFunnel } from './grounds/funnel.js';
+import { createGranite as makeGranite } from './grounds/granite.js';
 import { injectSeoContent } from './languages-seo.js';
 
 // Raycaster ve pointer tanımı sadece renderer'dan sonra olacak
@@ -194,11 +195,13 @@ function makeBtn(label, onClick){
 }
 
 const flatBtn = makeBtn('Flat', () => setGroundStyle('Flat'));
+const graniteBtn = makeBtn('Granite (reflective)', () => setGroundStyle('Granite'));
 const seaBtn = makeBtn('Sea Wave', () => setGroundStyle('Sea'));
 const mathBtn = makeBtn('Mathematical surface', () => setGroundStyle('Math'));
 const roomBtn = makeBtn('Room', () => setGroundStyle('Room'));
 const funnelBtn = makeBtn('Funnel', () => setGroundStyle('Funnel'));
 toolbar.appendChild(flatBtn);
+toolbar.appendChild(graniteBtn);
 toolbar.appendChild(seaBtn);
 toolbar.appendChild(mathBtn);
 toolbar.appendChild(roomBtn);
@@ -223,6 +226,7 @@ let mathObj = null;
 let currentGroundStyle = 'Flat';
 let roomObj = null; // {mesh, dispose}
 let funnelObj = null; // {mesh, dispose}
+let graniteObj = null; // {mesh, dispose}
 // Saved states for reflection toggling
 let _savedMaxDistance = null;
 let _savedCameraFar = null;
@@ -711,9 +715,44 @@ window.addEventListener('keydown', (e) => {
 
 // GUI toggles for the gizmo (in the 6-axis folder)
 try {
-  sixFolder.add(params, 'showGizmo').name('Transform Gizmo').onChange(() => { attachGizmo(); saveParamsToActive(); });
-  sixFolder.add(params, 'gizmoMode', ['translate', 'rotate']).name('Gizmo Mode').onChange((v) => setGizmoMode(v));
+  sixFolder.add(params, 'showGizmo').name('Transform Gizmo').onChange(() => { attachGizmo(); refreshGizmoNav(); saveParamsToActive(); });
+  sixFolder.add(params, 'gizmoMode', ['translate', 'rotate']).name('Gizmo Mode').onChange((v) => { setGizmoMode(v); refreshGizmoNav(); });
 } catch(e) {}
+
+// --- Gizmo control in the navbar (mode + on/off) ---
+const GZ_ICON = {
+  move: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M2 12h20M12 2 9 5M12 2l3 3M12 22l-3-3M12 22l3-3M2 12l3-3M2 12l3 3M22 12l-3-3M22 12l-3 3"/></svg>',
+  rotate: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v4h-4"/></svg>',
+  toggle: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/><circle cx="12" cy="12" r="2.5"/></svg>'
+};
+const gizmoNav = document.createElement('div');
+gizmoNav.style.cssText = 'display:flex; align-items:center; gap:3px; margin-left:8px; flex-shrink:0; padding-left:8px; border-left:1px solid rgba(255,255,255,0.1);';
+function gzBtn(icon, label, title){
+  const b = document.createElement('button');
+  b.innerHTML = `${icon}<span>${label}</span>`;
+  b.title = title;
+  b.style.cssText = 'display:inline-flex; align-items:center; gap:5px; padding:5px 9px; border:none; border-radius:6px; background:rgba(60,60,70,0.9); color:#fff; font:600 11px var(--tc-font, system-ui); cursor:pointer;';
+  return b;
+}
+const gzToggle = gzBtn(GZ_ICON.toggle, 'Gizmo', 'Gizmo aç/kapa');
+const gzMove = gzBtn(GZ_ICON.move, 'Taşı', 'Öteleme modu (G)');
+const gzRot  = gzBtn(GZ_ICON.rotate, 'Döndür', 'Rotasyon modu (R)');
+function refreshGizmoNav(){
+  const on = !!params.showGizmo;
+  gzToggle.style.background = on ? 'rgba(35,120,200,0.9)' : 'rgba(60,60,70,0.9)';
+  gzMove.style.background = (on && params.gizmoMode === 'translate') ? 'rgba(35,120,200,0.9)' : 'rgba(60,60,70,0.9)';
+  gzRot.style.background  = (on && params.gizmoMode === 'rotate') ? 'rgba(35,120,200,0.9)' : 'rgba(60,60,70,0.9)';
+  gzMove.style.opacity = on ? '1' : '0.5';
+  gzRot.style.opacity  = on ? '1' : '0.5';
+}
+gzToggle.onclick = () => { params.showGizmo = !params.showGizmo; attachGizmo(); refreshGizmoNav(); saveParamsToActive(); };
+gzMove.onclick = () => { params.showGizmo = true; setGizmoMode('translate'); attachGizmo(); refreshGizmoNav(); };
+gzRot.onclick  = () => { params.showGizmo = true; setGizmoMode('rotate'); attachGizmo(); refreshGizmoNav(); };
+gizmoNav.appendChild(gzToggle);
+gizmoNav.appendChild(gzMove);
+gizmoNav.appendChild(gzRot);
+navBar.appendChild(gizmoNav);
+refreshGizmoNav();
 
 function createMaterial(){
   const mat = new THREE.MeshPhysicalMaterial({
@@ -984,6 +1023,7 @@ function setGroundStyle(style){
   }
   if (roomObj){ scene.remove(roomObj.mesh); roomObj.dispose?.(); roomObj = null; }
   if (funnelObj){ scene.remove(funnelObj.mesh); funnelObj.dispose?.(); funnelObj = null; }
+  if (graniteObj){ scene.remove(graniteObj.mesh); graniteObj.dispose?.(); graniteObj = null; }
   if (reflector) { reflector.visible = false; }
   ground.visible = false;
   // Shadow-catcher off by default; enabled only for surfaces that can't
@@ -1000,16 +1040,22 @@ function setGroundStyle(style){
     }
   } else if (style === 'Sea'){
     seaObj = makeSea(ground.position.y);
-    // enlarge sea coverage to feel like an infinite plane
-    seaObj.mesh.scale.set(8,8,8);
     scene.add(seaObj.mesh);
-    // The sea uses a raw-GLSL ShaderMaterial that cannot receive shadows, so
-    // catch the object's shadow on a coplanar invisible plane at sea level.
+    // THREE.Water is reflective and doesn't receive standard shadows, so catch
+    // the object's shadow on a coplanar invisible plane at sea level.
     if (shadowCatcher) {
       shadowCatcher.position.y = seaObj.mesh.position.y + 0.02;
       shadowCatcher.visible = true;
     }
     ground.visible = false;
+  } else if (style === 'Granite'){
+    graniteObj = makeGranite(ground.position.y, renderer);
+    scene.add(graniteObj.mesh);
+    graniteObj.mesh.receiveShadow = true;
+    // Polished granite: blend a reflection over the stone via the Reflector.
+    ground.visible = false;
+    params.reflectorOpacity = 0.55;
+    toggleReflection(true);
   } else if (style === 'Math'){
     mathObj = makeMath(ground.position.y);
     scene.add(mathObj.mesh);
@@ -1021,12 +1067,10 @@ function setGroundStyle(style){
   } else if (style === 'Room'){
     roomObj = makeRoom(ground.position.y);
     scene.add(roomObj.mesh);
-    // Keep the flat ground in the room and project shadow onto it
-    ground.visible = true;
-    if (shadowReceiver) {
-      shadowReceiver.visible = true;
-      if (!scene.children.includes(shadowReceiver)) scene.add(shadowReceiver);
-    }
+    // Hide the checkerboard: the room provides its own floor (avoids z-fighting
+    // and the 60-unit checker poking out past the 50-unit room walls). The
+    // room's floor receives the shadow.
+    ground.visible = false;
   } else if (style === 'Funnel'){
     funnelObj = makeFunnel(ground.position.y);
     scene.add(funnelObj.mesh);
