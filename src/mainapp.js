@@ -135,42 +135,132 @@ const initExportPanel = () => {
 // Version is injected by Vite (define) from package.json and bumped on each build.
 const APP_VERSION = 'v' + (typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.0.0');
 const statsOverlay = document.createElement('div');
-statsOverlay.style.position = 'fixed';
-statsOverlay.style.left = '12px';
-statsOverlay.style.bottom = '12px';
-statsOverlay.style.zIndex = '1000';
-statsOverlay.style.padding = '8px 10px';
-statsOverlay.style.background = 'rgba(0,0,0,0.6)';
-statsOverlay.style.color = '#fff';
-statsOverlay.style.fontFamily = 'monospace';
-statsOverlay.style.fontSize = '13px';
-statsOverlay.style.borderRadius = '6px';
-statsOverlay.style.minWidth = '120px';
-statsOverlay.style.maxWidth = '260px';
-
-// Active object info moved here from the navbar. `activeInfo` comes from
-// setupNavbar(); we restyle it for the panel and place it on top. It is a
-// sibling of the metrics line so per-frame stat updates don't wipe it.
-activeInfo.style.cssText = `
-  color: #3fa7ff; font-size: 12px; margin-bottom: 6px; min-height: 14px;
-  word-break: break-word; line-height: 1.3;
+statsOverlay.style.cssText = `
+  position: fixed; left: 12px; bottom: 12px; z-index: 1000;
+  background: rgba(0,0,0,0.6); color: #fff; font-family: monospace; font-size: 13px;
+  border-radius: 6px; min-width: 150px; max-width: 300px; overflow: hidden;
 `;
+
+// Header doubles as the drag handle and carries the close button.
+const statsHeader = document.createElement('div');
+statsHeader.style.cssText = `
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  padding: 5px 8px; cursor: move; background: rgba(255,255,255,0.06); user-select: none;
+`;
+const statsTitle = document.createElement('span');
+statsTitle.textContent = 'İstatistik';
+statsTitle.style.cssText = 'font-size:11px; letter-spacing:0.4px; opacity:0.85;';
+const statsClose = document.createElement('button');
+statsClose.textContent = '✕';
+statsClose.title = 'Kapat';
+statsClose.style.cssText = 'border:none; background:transparent; color:#fff; cursor:pointer; font-size:13px; line-height:1; padding:0 2px; opacity:0.7;';
+statsHeader.appendChild(statsTitle);
+statsHeader.appendChild(statsClose);
+
+const statsBody = document.createElement('div');
+statsBody.style.cssText = 'padding: 8px 10px;';
+// Active object info (comes from setupNavbar). Restyled for the panel.
+activeInfo.style.cssText = `color:#3fa7ff; font-size:12px; margin-bottom:6px; min-height:14px; word-break:break-word; line-height:1.3;`;
 const statsMetrics = document.createElement('div');
-statsMetrics.innerHTML = `Verts: 0<br/>Faces: 0<br/><span style="display:inline-block;margin-top:4px;font-size:11px;color:#7da6cc;opacity:0.9">${APP_VERSION}</span>`;
-statsOverlay.appendChild(activeInfo);
-statsOverlay.appendChild(statsMetrics);
+statsBody.appendChild(activeInfo);
+statsBody.appendChild(statsMetrics);
+
+statsOverlay.appendChild(statsHeader);
+statsOverlay.appendChild(statsBody);
 document.body.appendChild(statsOverlay);
 
-function updateStats(){
-  if (!knotGeometry) {
-    statsMetrics.innerHTML = `Verts: 0<br/>Faces: 0<br/><span style="display:inline-block;margin-top:4px;font-size:11px;color:#7da6cc;opacity:0.9">${APP_VERSION}</span>`;
-    return;
+// Small chip to re-open the panel after it's closed.
+const statsRestore = document.createElement('button');
+statsRestore.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" style="flex:0 0 auto"><path d="M4 20V10M10 20V4M16 20v-6M22 20H2"/></svg><span>İstatistik</span>';
+statsRestore.style.cssText = `position:fixed; left:12px; bottom:12px; z-index:1000; display:none; align-items:center; gap:6px; padding:6px 10px; border:none; border-radius:6px; background:rgba(0,0,0,0.6); color:#fff; font:600 11px monospace; cursor:pointer;`;
+document.body.appendChild(statsRestore);
+
+// --- Persist position + closed state ---
+const STATS_KEY = 'tc_stats_ui';
+function saveStatsUi(){
+  try {
+    localStorage.setItem(STATS_KEY, JSON.stringify({
+      left: statsOverlay.style.left || null,
+      top: statsOverlay.style.top || null,
+      hidden: statsOverlay.style.display === 'none'
+    }));
+  } catch(e) {}
+}
+try {
+  const s = JSON.parse(localStorage.getItem(STATS_KEY) || 'null');
+  if (s){
+    if (s.top){ statsOverlay.style.left = s.left; statsOverlay.style.top = s.top; statsOverlay.style.bottom = 'auto'; }
+    if (s.hidden){ statsOverlay.style.display = 'none'; statsRestore.style.display = 'inline-flex'; }
   }
-  const verts = knotGeometry.attributes && knotGeometry.attributes.position ? knotGeometry.attributes.position.count : 0;
-  let faces = 0;
-  if (knotGeometry.index) faces = Math.floor(knotGeometry.index.count / 3);
-  else faces = Math.floor(verts / 3);
-  statsMetrics.innerHTML = `Verts: ${verts.toLocaleString()}<br/>Faces: ${faces.toLocaleString()}<br/><span style="display:inline-block;margin-top:4px;font-size:11px;color:#7da6cc;opacity:0.9">${APP_VERSION}</span>`;
+} catch(e) {}
+
+// --- Close / restore ---
+statsClose.addEventListener('click', (e) => {
+  e.stopPropagation();
+  statsOverlay.style.display = 'none';
+  statsRestore.style.display = 'inline-flex';
+  saveStatsUi();
+});
+statsRestore.addEventListener('click', () => {
+  statsOverlay.style.display = 'block';
+  statsRestore.style.display = 'none';
+  saveStatsUi();
+});
+
+// --- Drag by the header ---
+let _statsDrag = false, _sdx = 0, _sdy = 0;
+statsHeader.addEventListener('pointerdown', (e) => {
+  if (e.target === statsClose) return; // let the close button click through
+  const r = statsOverlay.getBoundingClientRect();
+  statsOverlay.style.left = r.left + 'px';
+  statsOverlay.style.top = r.top + 'px';
+  statsOverlay.style.bottom = 'auto';
+  _sdx = e.clientX - r.left;
+  _sdy = e.clientY - r.top;
+  _statsDrag = true;
+  try { statsHeader.setPointerCapture(e.pointerId); } catch(_) {}
+  e.preventDefault();
+});
+statsHeader.addEventListener('pointermove', (e) => {
+  if (!_statsDrag) return;
+  let nl = e.clientX - _sdx, nt = e.clientY - _sdy;
+  nl = Math.max(0, Math.min(window.innerWidth - statsOverlay.offsetWidth, nl));
+  nt = Math.max(0, Math.min(window.innerHeight - statsOverlay.offsetHeight, nt));
+  statsOverlay.style.left = nl + 'px';
+  statsOverlay.style.top = nt + 'px';
+});
+statsHeader.addEventListener('pointerup', (e) => {
+  if (!_statsDrag) return;
+  _statsDrag = false;
+  try { statsHeader.releasePointerCapture(e.pointerId); } catch(_) {}
+  saveStatsUi();
+});
+
+function updateStats(){
+  const fmt = (n) => (n || 0).toLocaleString();
+  // Active object counts
+  let av = 0, af = 0;
+  if (knotGeometry && knotGeometry.attributes && knotGeometry.attributes.position){
+    av = knotGeometry.attributes.position.count;
+    af = knotGeometry.index ? Math.floor(knotGeometry.index.count / 3) : Math.floor(av / 3);
+  }
+  // Scene totals across all objects
+  let tv = 0, tf = 0, count = 0;
+  try {
+    (objects || []).forEach(o => {
+      const g = (o.mesh && o.mesh.geometry) || o.geometry;
+      if (!g || !g.attributes || !g.attributes.position) return;
+      const v = g.attributes.position.count;
+      tv += v;
+      tf += g.index ? Math.floor(g.index.count / 3) : Math.floor(v / 3);
+      count++;
+    });
+  } catch(e) {}
+  statsMetrics.innerHTML =
+    `Verts: ${fmt(av)}<br/>Faces: ${fmt(af)}`
+    + `<div style="margin-top:5px; padding-top:5px; border-top:1px solid rgba(255,255,255,0.12); color:#9fd0a0;">`
+    + `Sahne — Yüzey: ${fmt(tf)} · Köşe: ${fmt(tv)} <span style="opacity:0.7">(${count} nesne)</span></div>`
+    + `<span style="display:inline-block;margin-top:5px;font-size:11px;color:#7da6cc;opacity:0.9">${APP_VERSION}</span>`;
 }
 
 // top toolbar for ground style (moved into Environment panel)
