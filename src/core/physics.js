@@ -21,15 +21,24 @@ export function createPhysics(groundY){
 
   const links = []; // { mesh, body }
 
-  function addBody(mesh, radius){
+  // spec: { spheres: [{x,y,z,r}, ...] } for a compound collider that hugs the
+  // tube, or { radius } for a single bounding sphere (fallback).
+  function addBody(mesh, spec){
     const body = new CANNON.Body({
       mass: 1,
       material: mat,
-      shape: new CANNON.Sphere(Math.max(0.25, radius)),
-      position: new CANNON.Vec3(mesh.position.x, mesh.position.y, mesh.position.z),
       linearDamping: 0.05,
       angularDamping: 0.2
     });
+    if (spec && Array.isArray(spec.spheres) && spec.spheres.length){
+      for (const s of spec.spheres){
+        body.addShape(new CANNON.Sphere(Math.max(0.08, s.r)), new CANNON.Vec3(s.x, s.y, s.z));
+      }
+    } else {
+      body.addShape(new CANNON.Sphere(Math.max(0.25, (spec && spec.radius) || 1)));
+    }
+    body.updateMassProperties(); // recompute inertia now that shapes are added
+    body.position.set(mesh.position.x, mesh.position.y, mesh.position.z);
     const q = mesh.quaternion;
     body.quaternion.set(q.x, q.y, q.z, q.w);
     world.addBody(body);

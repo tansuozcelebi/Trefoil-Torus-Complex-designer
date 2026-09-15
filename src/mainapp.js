@@ -764,14 +764,39 @@ refreshGizmoNav();
 // --- Physics: rigid bodies fall, rest on the ground and collide ---
 params.physics = false;
 
+// Build a compound collider that hugs the tube: average each cross-section
+// ring of the (centered) geometry to get the centerline, then place a small
+// sphere (tube radius) at each. Objects then collide tube-to-tube instead of
+// via one big enclosing sphere, so parts actually touch with no gap.
+function colliderSpecFor(o){
+  const geo = (o.mesh && o.mesh.geometry) || o.geometry;
+  const fallback = { radius: (geo && geo.boundingSphere && geo.boundingSphere.radius) || 1 };
+  if (!geo || !geo.attributes || !geo.attributes.position) return fallback;
+  const pos = geo.attributes.position;
+  const isFoil = o.params && o.params.objectType === 'BaskınFoil';
+  const ringSize = isFoil ? 2 : (((o.params && o.params.vSegments) || 32) + 1);
+  const rings = Math.floor(pos.count / ringSize);
+  if (rings < 3) return fallback;
+  const r = Math.max(0.12, (o.params && o.params.tubeRadius) || 0.2);
+  const maxRings = 48;
+  const step = Math.max(1, Math.floor(rings / maxRings));
+  const spheres = [];
+  for (let ri = 0; ri < rings; ri += step){
+    let cx = 0, cy = 0, cz = 0;
+    for (let j = 0; j < ringSize; j++){
+      const idx = ri * ringSize + j;
+      cx += pos.getX(idx); cy += pos.getY(idx); cz += pos.getZ(idx);
+    }
+    spheres.push({ x: cx / ringSize, y: cy / ringSize, z: cz / ringSize, r });
+  }
+  return spheres.length ? { spheres } : fallback;
+}
+
 function syncPhysicsBodies(){
   physics.clear();
   objects.forEach(o => {
-    const m = o.mesh;
-    if (!m) return;
-    const r = (m.geometry && m.geometry.boundingSphere && m.geometry.boundingSphere.radius)
-      || (o.geometry && o.geometry.boundingSphere && o.geometry.boundingSphere.radius) || 1;
-    physics.addBody(m, r);
+    if (!o.mesh) return;
+    physics.addBody(o.mesh, colliderSpecFor(o));
   });
 }
 
