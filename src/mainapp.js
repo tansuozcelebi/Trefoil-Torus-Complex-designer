@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { createRendererAndScene } from './core/scene.js';
 import { createBaseGround } from './core/ground.js';
 import { createLights } from './core/lights.js';
+import { createPhysics } from './core/physics.js';
 import { setupKeyboardControls } from './controls/keyboard.js';
 import { tabs as TabsConfig } from './ui/tabs.ts';
 import { setupGUI } from './ui/guiMenu.js';
@@ -220,6 +221,10 @@ const { ambient, spot } = createLights(scene);
 // Ground + shadow receiver
 const { ground, shadowReceiver, shadowCatcher, groundSize } = createBaseGround(scene, renderer);
 
+// Rigid-body physics (objects fall, rest on the ground and collide). Off by
+// default; toggled from the navbar. See setPhysicsEnabled below.
+const physics = createPhysics(ground.position.y);
+
 let reflector = null;
 let seaObj = null; // {mesh, setTime, resize}
 let mathObj = null;
@@ -354,6 +359,7 @@ function addObjectFromPreset(preset){
   setActive(id);
   rebuild();
   refreshObjectsList();
+  try { if (params.physics && typeof syncPhysicsBodies === 'function') syncPhysicsBodies(); } catch(e) {}
 }
 
 function ensureInitialObject(){
@@ -409,6 +415,7 @@ function refreshObjectsList(){
       objects = objects.filter(x => x.id !== o.id);
       if (activeId === o.id){ activeId = objects[0]?.id ?? null; setActive(activeId); }
       refreshObjectsList(); updateStats();
+      try { if (params.physics && typeof syncPhysicsBodies === 'function') syncPhysicsBodies(); } catch(e) {}
     };
     row.appendChild(btn); row.appendChild(del);
     el.appendChild(row);
@@ -754,6 +761,72 @@ gizmoNav.appendChild(gzRot);
 navBar.appendChild(gizmoNav);
 refreshGizmoNav();
 
+// --- Physics: rigid bodies fall, rest on the ground and collide ---
+params.physics = false;
+
+function syncPhysicsBodies(){
+  physics.clear();
+  objects.forEach(o => {
+    const m = o.mesh;
+    if (!m) return;
+    const r = (m.geometry && m.geometry.boundingSphere && m.geometry.boundingSphere.radius)
+      || (o.geometry && o.geometry.boundingSphere && o.geometry.boundingSphere.radius) || 1;
+    physics.addBody(m, r);
+  });
+}
+
+function setPhysicsEnabled(on){
+  params.physics = !!on;
+  if (params.physics){
+    physics.setGroundY(ground.position.y);
+    syncPhysicsBodies();
+    // A gentle nudge so bodies clearly come alive and interact.
+    physics.links.forEach(l => {
+      l.body.velocity.set((Math.random() - 0.5) * 1.6, 0, (Math.random() - 0.5) * 1.6);
+      l.body.wakeUp();
+    });
+    // Physics drives transforms; suspend the manual gizmo.
+    try { transformControls.detach(); transformControls.visible = false; } catch(e) {}
+  } else {
+    physics.clear();
+    // Write where things landed back into the object records / params.
+    objects.forEach(o => {
+      const m = o.mesh; if (!m) return;
+      o.params = o.params || {};
+      o.params.posX = +m.position.x.toFixed(3);
+      o.params.posY = +m.position.y.toFixed(3);
+      o.params.posZ = +m.position.z.toFixed(3);
+      o.params.rotX = +THREE.MathUtils.radToDeg(m.rotation.x).toFixed(2);
+      o.params.rotY = +THREE.MathUtils.radToDeg(m.rotation.y).toFixed(2);
+      o.params.rotZ = +THREE.MathUtils.radToDeg(m.rotation.z).toFixed(2);
+    });
+    const rec = getActiveRecord && getActiveRecord();
+    if (rec && rec.params){
+      params.posX = rec.params.posX; params.posY = rec.params.posY; params.posZ = rec.params.posZ;
+      params.rotX = rec.params.rotX; params.rotY = rec.params.rotY; params.rotZ = rec.params.rotZ;
+      try { gui.updateDisplay(); } catch(e) {}
+    }
+    if (params.showGizmo) { try { attachGizmo(); } catch(e) {} }
+  }
+  refreshPhysicsNav();
+}
+
+// Navbar "Fizik" toggle
+const PHYS_ICON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><ellipse cx="12" cy="12" rx="10" ry="4.5"/><ellipse cx="12" cy="12" rx="10" ry="4.5" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.5" transform="rotate(120 12 12)"/></svg>';
+const physNav = document.createElement('div');
+physNav.style.cssText = 'display:flex; align-items:center; gap:3px; margin-left:6px; flex-shrink:0;';
+const physBtn = document.createElement('button');
+physBtn.innerHTML = `${PHYS_ICON}<span>Fizik</span>`;
+physBtn.title = 'Fizik motoru: nesneler düşer ve çarpışır (aç/kapa)';
+physBtn.style.cssText = 'display:inline-flex; align-items:center; gap:5px; padding:5px 9px; border:none; border-radius:6px; background:rgba(60,60,70,0.9); color:#fff; font:600 11px var(--tc-font, system-ui); cursor:pointer;';
+function refreshPhysicsNav(){
+  physBtn.style.background = params.physics ? 'rgba(35,120,200,0.9)' : 'rgba(60,60,70,0.9)';
+}
+physBtn.onclick = () => setPhysicsEnabled(!params.physics);
+physNav.appendChild(physBtn);
+navBar.appendChild(physNav);
+refreshPhysicsNav();
+
 function createMaterial(){
   const mat = new THREE.MeshPhysicalMaterial({
   color: new THREE.Color(params.materialColor),
@@ -922,6 +995,8 @@ function rebuild(){
   }
   // rebuild replaced knotMesh — re-point the transform gizmo at it.
   try { if (typeof attachGizmo === 'function') attachGizmo(); } catch(e) {}
+  // rebuild replaced the mesh — rebuild its physics body too if physics is on.
+  try { if (params.physics && typeof syncPhysicsBodies === 'function') syncPhysicsBodies(); } catch(e) {}
 }
 
 function applyTransform(){
@@ -1183,16 +1258,24 @@ function updateSelectBounce(){
   }
 }
 
+let _lastFrameMs = performance.now();
 function animate(){
   requestAnimationFrame(animate);
   const now = performance.now() * 0.001;
-  // optional auto-rotate the knot object (local rotation)
-  if (params.autoRotate && knotMesh){
-    knotMesh.rotation.y += params.rotationSpeed * 0.01;
-  }
+  const _dt = Math.min(0.05, (performance.now() - _lastFrameMs) / 1000);
+  _lastFrameMs = performance.now();
 
-  // selection bounce / click feedback
-  updateSelectBounce();
+  // Physics drives object transforms while enabled (skip manual anim then).
+  if (params.physics){
+    physics.step(_dt);
+  } else {
+    // optional auto-rotate the knot object (local rotation)
+    if (params.autoRotate && knotMesh){
+      knotMesh.rotation.y += params.rotationSpeed * 0.01;
+    }
+    // selection bounce / click feedback
+    updateSelectBounce();
+  }
 
   controls.update();
 
@@ -1274,7 +1357,8 @@ renderer.domElement.addEventListener('pointerdown', (event) => {
     if (rec) {
       setActive(rec.id);
       // Short bounce + color flash so the click is clearly felt.
-      playSelectFeedback(mesh);
+      // Skip while physics runs — it would fight the simulated position.
+      if (!params.physics) playSelectFeedback(mesh);
     }
   }
 });
