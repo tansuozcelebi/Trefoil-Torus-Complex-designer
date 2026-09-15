@@ -822,13 +822,20 @@ const GZ_ICON = {
   rotate: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v4h-4"/></svg>',
   toggle: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/><circle cx="12" cy="12" r="2.5"/></svg>'
 };
+// Gizmo controls live in the Object (Nesne) panel, next to the object's
+// transform controls, rather than on the navbar.
 const gizmoNav = document.createElement('div');
-gizmoNav.style.cssText = 'display:flex; align-items:center; gap:3px; margin-left:8px; flex-shrink:0; padding-left:8px; border-left:1px solid rgba(255,255,255,0.1);';
+gizmoNav.style.cssText = 'display:flex; flex-direction:column; gap:6px; margin-bottom:10px;';
+const gizmoLabel = document.createElement('div');
+gizmoLabel.textContent = 'Gizmo';
+gizmoLabel.style.cssText = 'font-size:11px; text-transform:uppercase; letter-spacing:0.5px; opacity:0.7;';
+const gizmoRow = document.createElement('div');
+gizmoRow.style.cssText = 'display:flex; gap:6px; flex-wrap:wrap;';
 function gzBtn(icon, label, title){
   const b = document.createElement('button');
   b.innerHTML = `${icon}<span>${label}</span>`;
   b.title = title;
-  b.style.cssText = 'display:inline-flex; align-items:center; gap:5px; padding:5px 9px; border:none; border-radius:6px; background:rgba(60,60,70,0.9); color:#fff; font:600 11px var(--tc-font, system-ui); cursor:pointer;';
+  b.style.cssText = 'flex:1 1 auto; display:inline-flex; align-items:center; justify-content:center; gap:5px; padding:6px 10px; border:none; border-radius:6px; background:rgba(60,60,70,0.9); color:#fff; font:600 11px var(--tc-font, system-ui); cursor:pointer;';
   return b;
 }
 const gzToggle = gzBtn(GZ_ICON.toggle, 'Gizmo', 'Gizmo aç/kapa');
@@ -845,10 +852,12 @@ function refreshGizmoNav(){
 gzToggle.onclick = () => { params.showGizmo = !params.showGizmo; attachGizmo(); refreshGizmoNav(); saveParamsToActive(); };
 gzMove.onclick = () => { params.showGizmo = true; setGizmoMode('translate'); attachGizmo(); refreshGizmoNav(); };
 gzRot.onclick  = () => { params.showGizmo = true; setGizmoMode('rotate'); attachGizmo(); refreshGizmoNav(); };
-gizmoNav.appendChild(gzToggle);
-gizmoNav.appendChild(gzMove);
-gizmoNav.appendChild(gzRot);
-navBar.appendChild(gizmoNav);
+gizmoRow.appendChild(gzToggle);
+gizmoRow.appendChild(gzMove);
+gizmoRow.appendChild(gzRot);
+gizmoNav.appendChild(gizmoLabel);
+gizmoNav.appendChild(gizmoRow);
+if (objectPanel) objectPanel.appendChild(gizmoNav);
 refreshGizmoNav();
 
 // --- Physics: rigid bodies fall, rest on the ground and collide ---
