@@ -10,10 +10,14 @@ const moveStepBase = 0.1;
 const rotStep = 5; // degrees
 let repeatTimer = null;
 
-// Setup touch gizmo with dependencies from main app
-export function setupTouchGizmo(params, saveParamsToActive, applyTransform, gui){
-  if (!isTouchDevice()) return;
-  
+// Setup touch gizmo with dependencies from main app.
+// opts: { modeButtons?: HTMLElement, onTransformStart?, onTransformEnd? }
+// The on-screen gizmo panel now shows on all devices (not only touch) and hosts
+// the gizmo mode buttons; onTransformStart/End let the app grab the object in
+// the physics sim while it is being moved.
+export function setupTouchGizmo(params, saveParamsToActive, applyTransform, gui, opts = {}){
+  void isTouchDevice; // kept for reference; panel now shows on all devices
+
   function applyAndSaveTransform(){
     saveParamsToActive();
     applyTransform();
@@ -142,11 +146,15 @@ export function setupTouchGizmo(params, saveParamsToActive, applyTransform, gui)
     }
 
     function handleAction(fn){
+      if (opts.onTransformStart) { try { opts.onTransformStart(); } catch(e){} }
       fn();
       clearInterval(repeatTimer);
       repeatTimer = setInterval(fn, 120);
     }
-    function stopRepeat(){ clearInterval(repeatTimer); repeatTimer=null; }
+    function stopRepeat(){
+      clearInterval(repeatTimer); repeatTimer = null;
+      if (opts.onTransformEnd) { try { opts.onTransformEnd(); } catch(e){} }
+    }
 
     const actions = [
       { label:'X+', fn:()=>{ params.posX += moveStepBase; applyAndSaveTransform(); } },
@@ -190,6 +198,13 @@ export function setupTouchGizmo(params, saveParamsToActive, applyTransform, gui)
     });
 
     gizmoRoot.appendChild(dragBar);
+    // Gizmo mode buttons (Gizmo/Taşı/Döndür) supplied by the app.
+    if (opts.modeButtons){
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'padding:8px; background:rgba(15,15,20,0.88); border-left:1px solid rgba(255,255,255,0.12); border-right:1px solid rgba(255,255,255,0.12);';
+      wrap.appendChild(opts.modeButtons);
+      gizmoRoot.appendChild(wrap);
+    }
     gizmoRoot.appendChild(panel);
     gizmoRoot.appendChild(toggle);
     document.body.appendChild(gizmoRoot);
