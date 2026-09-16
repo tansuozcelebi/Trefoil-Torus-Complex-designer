@@ -1,6 +1,6 @@
 export const tabs = {
   left: ['Home', 'Environment', 'Scene'],
-  right: ['Object', 'Export'],
+  right: ['Object', 'Gizmo', 'Export'],
   tail: ['About', 'Help']
 };
 

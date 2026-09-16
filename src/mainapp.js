@@ -765,8 +765,14 @@ if (!params.gizmoMode) params.gizmoMode = 'translate';
 const transformControls = new TransformControls(camera, renderer.domElement);
 transformControls.setSize(0.85);
 transformControls.setMode(params.gizmoMode);
+// While physics runs and the user grabs the gizmo, the held mesh's body is
+// pinned to the gizmo so it can be moved/rotated (see physics.step).
+let physicsHeldMesh = null;
 // Don't orbit the camera while dragging a gizmo handle.
-transformControls.addEventListener('dragging-changed', (e) => { controls.enabled = !e.value; });
+transformControls.addEventListener('dragging-changed', (e) => {
+  controls.enabled = !e.value;
+  physicsHeldMesh = (e.value && params.physics) ? knotMesh : null;
+});
 // Mirror gizmo edits back into params (world units / degrees) so the GUI,
 // the object record and later rebuilds stay in sync. The wireframe is a child
 // of the mesh, so it follows automatically.
@@ -855,9 +861,14 @@ gzRot.onclick  = () => { params.showGizmo = true; setGizmoMode('rotate'); attach
 gizmoRow.appendChild(gzToggle);
 gizmoRow.appendChild(gzMove);
 gizmoRow.appendChild(gzRot);
+const gizmoHint = document.createElement('div');
+gizmoHint.textContent = 'Seçili nesneyi taşımak/döndürmek için. Fizik açıkken de kullanılabilir.';
+gizmoHint.style.cssText = 'font-size:11px; opacity:0.7; line-height:1.35;';
 gizmoNav.appendChild(gizmoLabel);
 gizmoNav.appendChild(gizmoRow);
-if (objectPanel) objectPanel.appendChild(gizmoNav);
+gizmoNav.appendChild(gizmoHint);
+const gizmoPanel = panels['Gizmo'];
+if (gizmoPanel) gizmoPanel.appendChild(gizmoNav);
 refreshGizmoNav();
 
 // --- Physics: rigid bodies fall, rest on the ground and collide ---
@@ -909,9 +920,11 @@ function setPhysicsEnabled(on){
       l.body.velocity.set((Math.random() - 0.5) * 1.6, 0, (Math.random() - 0.5) * 1.6);
       l.body.wakeUp();
     });
-    // Physics drives transforms; suspend the manual gizmo.
-    try { transformControls.detach(); transformControls.visible = false; } catch(e) {}
+    // Keep the gizmo available so the selected object can be grabbed and
+    // moved/rotated while physics is running (its body is pinned during drag).
+    try { attachGizmo(); } catch(e) {}
   } else {
+    physicsHeldMesh = null;
     physics.clear();
     // Write where things landed back into the object records / params.
     objects.forEach(o => {
@@ -1391,7 +1404,7 @@ function animate(){
 
   // Physics drives object transforms while enabled (skip manual anim then).
   if (params.physics){
-    physics.step(_dt);
+    physics.step(_dt, physicsHeldMesh);
   } else {
     // optional auto-rotate the knot object (local rotation)
     if (params.autoRotate && knotMesh){

@@ -39,7 +39,10 @@ export function createSea(groundY){
   }
 
   const waterNormals = makeWaterNormals(512);
-  const geo = new THREE.PlaneGeometry(size, size);
+  // Subdivided plane so we can give the surface REAL vertical relief (Water on
+  // its own is flat and only fakes ripples via the normal map).
+  const geo = new THREE.PlaneGeometry(size, size, 96, 96);
+  const basePos = Float32Array.from(geo.attributes.position.array);
   const water = new Water(geo, {
     textureWidth: 512,
     textureHeight: 512,
@@ -47,16 +50,32 @@ export function createSea(groundY){
     sunDirection: new THREE.Vector3(0.7, 0.8, 0.2).normalize(),
     sunColor: 0xffffff,
     waterColor: 0x0a2b3a,
-    distortionScale: 3.2,
+    distortionScale: 6.0,
     fog: false
   });
   water.rotation.x = -Math.PI / 2;
   water.position.y = groundY;
 
+  // Wave height (world units). Higher = taller waves.
+  const WAVE_AMP = 1.6;
+
   function setTime(t){
     if (water.material && water.material.uniforms && water.material.uniforms['time']){
       water.material.uniforms['time'].value = t * 0.6;
     }
+    // Displace the plane's vertices along its local +Z (world up) to make real,
+    // rolling waves. Local X/Y are the base positions; z carries the height.
+    const arr = geo.attributes.position.array;
+    for (let i = 0; i < arr.length; i += 3){
+      const x = basePos[i], y = basePos[i + 1];
+      arr[i + 2] = WAVE_AMP * (
+        Math.sin(x * 0.045 + t * 0.8) * 0.5 +
+        Math.sin(y * 0.037 - t * 0.6) * 0.4 +
+        Math.sin((x + y) * 0.028 + t * 1.1) * 0.35 +
+        Math.sin((x - y) * 0.06 + t * 0.9) * 0.2
+      );
+    }
+    geo.attributes.position.needsUpdate = true;
   }
   function resize(){ /* Water manages its own reflection render target */ }
 
