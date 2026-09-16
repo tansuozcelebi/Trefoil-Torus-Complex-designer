@@ -51,9 +51,23 @@ export function createPhysics(groundY){
     links.length = 0;
   }
 
-  function step(dt){
+  function step(dt, heldMesh){
+    // A grabbed mesh (dragged via the gizmo) pins its body to the mesh so the
+    // user controls it while the rest of the simulation runs around it.
+    if (heldMesh){
+      for (const l of links){
+        if (l.mesh !== heldMesh) continue;
+        const mp = l.mesh.position, mq = l.mesh.quaternion;
+        l.body.position.set(mp.x, mp.y, mp.z);
+        l.body.quaternion.set(mq.x, mq.y, mq.z, mq.w);
+        l.body.velocity.set(0, 0, 0);
+        l.body.angularVelocity.set(0, 0, 0);
+        l.body.wakeUp();
+      }
+    }
     world.step(1 / 60, Math.min(0.05, dt || 1 / 60), 4);
     for (const l of links){
+      if (l.mesh === heldMesh) continue; // the gizmo owns the held mesh's transform
       const p = l.body.position, q = l.body.quaternion;
       l.mesh.position.set(p.x, p.y, p.z);
       l.mesh.quaternion.set(q.x, q.y, q.z, q.w);
