@@ -46,28 +46,55 @@ export function createPhysics(groundY){
     return body;
   }
 
+  let _held = null;                       // currently grabbed link
+  const _heldPrev = new CANNON.Vec3();    // previous grabbed position (for velocity)
+
+  function setKinematic(body, on){
+    body.type = on ? CANNON.Body.KINEMATIC : CANNON.Body.DYNAMIC;
+    body.mass = on ? 0 : 1;
+    body.updateMassProperties();
+    body.velocity.set(0, 0, 0);
+    body.angularVelocity.set(0, 0, 0);
+    if (!on) body.wakeUp();
+  }
+
   function clear(){
+    if (_held && _held.body) setKinematic(_held.body, false);
+    _held = null;
     for (const l of links) world.removeBody(l.body);
     links.length = 0;
   }
 
   function step(dt, heldMesh){
-    // A grabbed mesh (dragged via the gizmo) pins its body to the mesh so the
-    // user controls it while the rest of the simulation runs around it.
-    if (heldMesh){
-      for (const l of links){
-        if (l.mesh !== heldMesh) continue;
-        const mp = l.mesh.position, mq = l.mesh.quaternion;
-        l.body.position.set(mp.x, mp.y, mp.z);
-        l.body.quaternion.set(mq.x, mq.y, mq.z, mq.w);
-        l.body.velocity.set(0, 0, 0);
-        l.body.angularVelocity.set(0, 0, 0);
-        l.body.wakeUp();
-      }
+    const heldLink = heldMesh ? links.find(l => l.mesh === heldMesh) : null;
+
+    // Enter/leave "grabbed" state. A grabbed body becomes KINEMATIC (infinite
+    // mass) so it shoves the other bodies out of the way instead of passing
+    // through them, and is released back to a normal falling body on drop.
+    if (heldLink !== _held){
+      if (_held && _held.body) setKinematic(_held.body, false);
+      if (heldLink && heldLink.body){ setKinematic(heldLink.body, true); _heldPrev.copy(heldLink.body.position); }
+      _held = heldLink;
     }
-    world.step(1 / 60, Math.min(0.05, dt || 1 / 60), 4);
+
+    const d = Math.min(0.05, dt || 1 / 60);
+
+    if (heldLink){
+      // Drive the grabbed body from the mesh (moved by the gizmo). A velocity
+      // derived from the frame's motion lets the solver push others correctly.
+      const m = heldLink.mesh, b = heldLink.body;
+      const inv = d > 0 ? 1 / d : 0;
+      b.velocity.set((m.position.x - _heldPrev.x) * inv, (m.position.y - _heldPrev.y) * inv, (m.position.z - _heldPrev.z) * inv);
+      b.position.set(m.position.x, m.position.y, m.position.z);
+      const q = m.quaternion; b.quaternion.set(q.x, q.y, q.z, q.w);
+      b.wakeUp();
+      _heldPrev.set(m.position.x, m.position.y, m.position.z);
+    }
+
+    world.step(1 / 60, d, 4);
+
     for (const l of links){
-      if (l.mesh === heldMesh) continue; // the gizmo owns the held mesh's transform
+      if (l === heldLink) continue; // the gizmo owns the grabbed mesh's transform
       const p = l.body.position, q = l.body.quaternion;
       l.mesh.position.set(p.x, p.y, p.z);
       l.mesh.quaternion.set(q.x, q.y, q.z, q.w);

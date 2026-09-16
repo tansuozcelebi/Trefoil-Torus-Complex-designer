@@ -867,8 +867,7 @@ gizmoHint.style.cssText = 'font-size:11px; opacity:0.7; line-height:1.35;';
 gizmoNav.appendChild(gizmoLabel);
 gizmoNav.appendChild(gizmoRow);
 gizmoNav.appendChild(gizmoHint);
-const gizmoPanel = panels['Gizmo'];
-if (gizmoPanel) gizmoPanel.appendChild(gizmoNav);
+// gizmoNav is embedded into the on-screen touch-gizmo panel (see setupTouchGizmo).
 refreshGizmoNav();
 
 // --- Physics: rigid bodies fall, rest on the ground and collide ---
@@ -1577,4 +1576,19 @@ window.addEventListener('pointerdown', (e) => {
 
 // --- Touch 6-axis Transform Gizmo (Mobile/Tablet) ---
 // Initialized from external module
-setupTouchGizmo(params, saveParamsToActive, applyTransform, gui);
+setupTouchGizmo(params, saveParamsToActive, applyTransform, gui, {
+  modeButtons: gizmoNav,
+  // While the on-screen gizmo moves the active object, grab it in the physics
+  // sim so it collides with the others (and doesn't fall) until released.
+  onTransformStart: () => {
+    if (params.physics && knotMesh){
+      // Continue from where the object physically is (params may be stale).
+      params.posX = knotMesh.position.x; params.posY = knotMesh.position.y; params.posZ = knotMesh.position.z;
+      params.rotX = THREE.MathUtils.radToDeg(knotMesh.rotation.x);
+      params.rotY = THREE.MathUtils.radToDeg(knotMesh.rotation.y);
+      params.rotZ = THREE.MathUtils.radToDeg(knotMesh.rotation.z);
+      physicsHeldMesh = knotMesh;
+    }
+  },
+  onTransformEnd: () => { physicsHeldMesh = null; }
+});
