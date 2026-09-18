@@ -51,6 +51,35 @@ export function getTabLabel(tabName, lang = 'en') {
   return tabTranslations[lang]?.[tabName] || tabName;
 }
 
+// UI control labels (buttons, panel titles, hints) — translated in all 20 languages
+// so every on-screen button follows the selected language.
+export const uiTranslations = {
+  en: { gizmo: 'Gizmo', move: 'Move', rotate: 'Rotate', physics: 'Physics', hide: 'Hide', show: 'Show', stats: 'Statistics', objectDrag: 'Object — drag', gizmoHint: 'To move/rotate the selected object. Works while physics is on too.' },
+  tr: { gizmo: 'Gizmo', move: 'Taşı', rotate: 'Döndür', physics: 'Fizik', hide: 'Gizle', show: 'Göster', stats: 'İstatistik', objectDrag: 'Nesne — sürükle', gizmoHint: 'Seçili nesneyi taşımak/döndürmek için. Fizik açıkken de kullanılabilir.' },
+  es: { gizmo: 'Gizmo', move: 'Mover', rotate: 'Rotar', physics: 'Física', hide: 'Ocultar', show: 'Mostrar', stats: 'Estadísticas', objectDrag: 'Objeto — arrastrar', gizmoHint: 'Para mover/rotar el objeto seleccionado. Funciona también con la física activada.' },
+  fr: { gizmo: 'Gizmo', move: 'Déplacer', rotate: 'Pivoter', physics: 'Physique', hide: 'Masquer', show: 'Afficher', stats: 'Statistiques', objectDrag: 'Objet — glisser', gizmoHint: "Pour déplacer/pivoter l'objet sélectionné. Fonctionne aussi quand la physique est activée." },
+  de: { gizmo: 'Gizmo', move: 'Bewegen', rotate: 'Drehen', physics: 'Physik', hide: 'Ausblenden', show: 'Einblenden', stats: 'Statistik', objectDrag: 'Objekt — ziehen', gizmoHint: 'Zum Bewegen/Drehen des ausgewählten Objekts. Funktioniert auch bei aktivierter Physik.' },
+  it: { gizmo: 'Gizmo', move: 'Sposta', rotate: 'Ruota', physics: 'Fisica', hide: 'Nascondi', show: 'Mostra', stats: 'Statistiche', objectDrag: 'Oggetto — trascina', gizmoHint: "Per spostare/ruotare l'oggetto selezionato. Funziona anche con la fisica attiva." },
+  pt: { gizmo: 'Gizmo', move: 'Mover', rotate: 'Girar', physics: 'Física', hide: 'Ocultar', show: 'Mostrar', stats: 'Estatísticas', objectDrag: 'Objeto — arrastar', gizmoHint: 'Para mover/girar o objeto selecionado. Funciona também com a física ativada.' },
+  ru: { gizmo: 'Gizmo', move: 'Двигать', rotate: 'Вращать', physics: 'Физика', hide: 'Скрыть', show: 'Показать', stats: 'Статистика', objectDrag: 'Объект — тянуть', gizmoHint: 'Для перемещения/вращения выбранного объекта. Работает и при включённой физике.' },
+  zh: { gizmo: 'Gizmo', move: '移动', rotate: '旋转', physics: '物理', hide: '隐藏', show: '显示', stats: '统计', objectDrag: '对象 — 拖动', gizmoHint: '用于移动/旋转选定对象。物理开启时也可使用。' },
+  ja: { gizmo: 'Gizmo', move: '移動', rotate: '回転', physics: '物理', hide: '非表示', show: '表示', stats: '統計', objectDrag: 'オブジェクト — ドラッグ', gizmoHint: '選択したオブジェクトを移動/回転します。物理が有効な間も使用できます。' },
+  ko: { gizmo: 'Gizmo', move: '이동', rotate: '회전', physics: '물리', hide: '숨기기', show: '표시', stats: '통계', objectDrag: '객체 — 드래그', gizmoHint: '선택한 객체를 이동/회전합니다. 물리가 켜져 있을 때도 사용할 수 있습니다.' },
+  ar: { gizmo: 'Gizmo', move: 'تحريك', rotate: 'تدوير', physics: 'الفيزياء', hide: 'إخفاء', show: 'إظهار', stats: 'إحصائيات', objectDrag: 'كائن — اسحب', gizmoHint: 'لتحريك/تدوير الكائن المحدد. يعمل أيضًا عند تفعيل الفيزياء.' },
+  hi: { gizmo: 'Gizmo', move: 'ले जाएँ', rotate: 'घुमाएँ', physics: 'भौतिकी', hide: 'छिपाएँ', show: 'दिखाएँ', stats: 'आँकड़े', objectDrag: 'वस्तु — खींचें', gizmoHint: 'चयनित वस्तु को स्थानांतरित/घुमाने के लिए। भौतिकी चालू होने पर भी काम करता है।' },
+  nl: { gizmo: 'Gizmo', move: 'Verplaatsen', rotate: 'Draaien', physics: 'Fysica', hide: 'Verbergen', show: 'Tonen', stats: 'Statistieken', objectDrag: 'Object — slepen', gizmoHint: 'Om het geselecteerde object te verplaatsen/draaien. Werkt ook als fysica aan staat.' },
+  pl: { gizmo: 'Gizmo', move: 'Przesuń', rotate: 'Obróć', physics: 'Fizyka', hide: 'Ukryj', show: 'Pokaż', stats: 'Statystyki', objectDrag: 'Obiekt — przeciągnij', gizmoHint: 'Aby przesunąć/obrócić wybrany obiekt. Działa również przy włączonej fizyce.' },
+  sv: { gizmo: 'Gizmo', move: 'Flytta', rotate: 'Rotera', physics: 'Fysik', hide: 'Dölj', show: 'Visa', stats: 'Statistik', objectDrag: 'Objekt — dra', gizmoHint: 'För att flytta/rotera det valda objektet. Fungerar även när fysik är på.' },
+  no: { gizmo: 'Gizmo', move: 'Flytt', rotate: 'Roter', physics: 'Fysikk', hide: 'Skjul', show: 'Vis', stats: 'Statistikk', objectDrag: 'Objekt — dra', gizmoHint: 'For å flytte/rotere det valgte objektet. Fungerer også når fysikk er på.' },
+  da: { gizmo: 'Gizmo', move: 'Flyt', rotate: 'Roter', physics: 'Fysik', hide: 'Skjul', show: 'Vis', stats: 'Statistik', objectDrag: 'Objekt — træk', gizmoHint: 'For at flytte/rotere det valgte objekt. Virker også når fysik er slået til.' },
+  fi: { gizmo: 'Gizmo', move: 'Siirrä', rotate: 'Kierrä', physics: 'Fysiikka', hide: 'Piilota', show: 'Näytä', stats: 'Tilastot', objectDrag: 'Objekti — vedä', gizmoHint: 'Valitun objektin siirtämiseen/kiertämiseen. Toimii myös fysiikan ollessa päällä.' },
+  el: { gizmo: 'Gizmo', move: 'Μετακίνηση', rotate: 'Περιστροφή', physics: 'Φυσική', hide: 'Απόκρυψη', show: 'Εμφάνιση', stats: 'Στατιστικά', objectDrag: 'Αντικείμενο — σύρσιμο', gizmoHint: 'Για μετακίνηση/περιστροφή του επιλεγμένου αντικειμένου. Λειτουργεί και όταν η φυσική είναι ενεργή.' }
+};
+
+export function getUILabel(key, lang = 'en') {
+  return (uiTranslations[lang] && uiTranslations[lang][key]) || uiTranslations.en[key] || key;
+}
+
 const helpContent = {
   en: `<h3>Quick Help</h3>
 <p><strong>Mouse Controls:</strong></p>

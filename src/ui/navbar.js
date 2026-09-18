@@ -256,6 +256,8 @@ export function setupNavbar() {
   TabsConfig.tail.forEach(addTabButton);
 
   // Language selector
+  const langListeners = [];
+  function onLanguageChange(fn) { if (typeof fn === 'function') langListeners.push(fn); }
   function updateLanguage(newLang) {
     setLanguage(newLang);
     const langBtn = document.querySelector('button[data-lang-selector]');
@@ -276,6 +278,9 @@ export function setupNavbar() {
       if (content) content.innerHTML = getAboutHtml(newLang);
     }
     if (window.exportPanelAPI?.updateLanguage) window.exportPanelAPI.updateLanguage();
+    // Notify other modules (e.g. gizmo/physics buttons owned by mainapp) so they
+    // re-label their own controls in the new language.
+    langListeners.forEach(fn => { try { fn(newLang); } catch (e) {} });
   }
 
   const langContainer = document.createElement('div');
@@ -374,5 +379,5 @@ export function setupNavbar() {
     if (!inNav && !inPanel) Object.keys(panels).forEach(k => setPanelVisible(k, false));
   });
 
-  return { navBar, panels, toggleMobileSidebar, showTab, activeInfo, updateLanguage };
+  return { navBar, panels, toggleMobileSidebar, showTab, activeInfo, updateLanguage, onLanguageChange };
 }
