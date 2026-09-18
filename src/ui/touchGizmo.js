@@ -1,4 +1,5 @@
 // Touch 6-axis Transform Gizmo (Mobile/Tablet)
+import { getUILabel, getCurrentLanguage } from './help.js';
 
 function isTouchDevice(){
   return ('ontouchstart' in window) || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0;
@@ -186,7 +187,13 @@ export function setupTouchGizmo(params, saveParamsToActive, applyTransform, gui,
     });
 
     const toggle = document.createElement('button');
-    toggle.textContent = 'Gizmo Hide';
+    toggle.className = 'tc-gizmo-toggle';
+    const toggleLabel = () => {
+      const lang = getCurrentLanguage();
+      return getUILabel('gizmo', lang) + ' ' + getUILabel(gizmoVisible ? 'hide' : 'show', lang);
+    };
+    toggle.dataset.visible = gizmoVisible ? '1' : '0';
+    toggle.textContent = toggleLabel();
     toggle.style.marginTop = '6px';
     toggle.style.padding = '8px 10px';
     toggle.style.border = 'none';
@@ -197,7 +204,8 @@ export function setupTouchGizmo(params, saveParamsToActive, applyTransform, gui,
     toggle.addEventListener('click', ()=>{
       gizmoVisible = !gizmoVisible;
       panel.style.display = gizmoVisible ? 'grid' : 'none';
-      toggle.textContent = gizmoVisible ? 'Gizmo Hide' : 'Gizmo Show';
+      toggle.dataset.visible = gizmoVisible ? '1' : '0';
+      toggle.textContent = toggleLabel();
     });
 
     gizmoRoot.appendChild(dragBar);

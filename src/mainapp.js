@@ -8,7 +8,7 @@ import { tabs as TabsConfig } from './ui/tabs.ts';
 import { setupGUI } from './ui/guiMenu.js';
 import { setupScenePanel } from './ui/scenePanel.js';
 import { setupTouchGizmo } from './ui/touchGizmo.js';
-import { getHelpHtml, getCurrentLanguage, setLanguage, languages, getTabLabel } from './ui/help.js';
+import { getHelpHtml, getCurrentLanguage, setLanguage, languages, getTabLabel, getUILabel } from './ui/help.js';
 import { getAboutHtml } from './ui/about.js';
 import { setupExportPanel } from './ui/exportMenu.js';
 import { setupNavbar } from './ui/navbar.js';
@@ -94,7 +94,7 @@ style.textContent = `
 document.head.appendChild(style);
 
 // Initialize navbar module - replaces ~560 lines of inline navbar setup code
-const { navBar, panels, showTab, activeInfo } = setupNavbar();
+const { navBar, panels, showTab, activeInfo, updateLanguage, onLanguageChange } = setupNavbar();
 
 // Environment panel will receive the toolbar
 const envPanel = panels['Environment'];
@@ -102,7 +102,8 @@ const objectPanel = panels['Object'];
 // Make the Object (Nesne) panel draggable via a small handle at the top.
 if (objectPanel){
   const objHandle = document.createElement('div');
-  objHandle.textContent = '⇕ Nesne — sürükle';
+  objHandle.className = 'tc-obj-handle';
+  objHandle.textContent = '⇕ ' + getUILabel('objectDrag', getCurrentLanguage());
   objHandle.style.cssText = 'cursor:move; user-select:none; font-size:11px; opacity:0.75; padding:2px 6px 8px; margin:-2px -2px 8px; border-bottom:1px solid rgba(255,255,255,0.1);';
   objectPanel.insertBefore(objHandle, objectPanel.firstChild);
   let od=false, odx=0, ody=0;
@@ -172,7 +173,7 @@ statsHeader.style.cssText = `
   padding: 5px 8px; cursor: move; background: rgba(255,255,255,0.06); user-select: none;
 `;
 const statsTitle = document.createElement('span');
-statsTitle.textContent = 'İstatistik';
+statsTitle.textContent = getUILabel('stats', getCurrentLanguage());
 statsTitle.style.cssText = 'font-size:11px; letter-spacing:0.4px; opacity:0.85;';
 const statsClose = document.createElement('button');
 statsClose.textContent = '✕';
@@ -324,7 +325,8 @@ toolbar.appendChild(funnelBtn);
 
 const { renderer, scene, camera } = createRendererAndScene(container);
 scene.background = new THREE.Color(0x0b0f14);
-camera.position.set(5, 3, 8);
+// Initial framing: camera pulled 20% further back from the scene origin.
+camera.position.set(6, 3.6, 9.6);
 
 const pmremGenerator = new THREE.PMREMGenerator(renderer);
 pmremGenerator.compileEquirectangularShader();
@@ -546,6 +548,10 @@ params.rotZ = 0.0;
 
 
 let knotMesh = null;
+// One-time initial-framing lift: raise the first-loaded object ~15% of its own
+// height so it sits a bit higher on the opening screen. Applied once and only
+// when the object has no saved (non-zero) vertical offset.
+let initialLiftApplied = false;
 let wireframeMesh = null;
 let knotGeometry = null;
 let knotMaterial = null;
@@ -857,7 +863,7 @@ const GZ_ICON = {
 const gizmoNav = document.createElement('div');
 gizmoNav.style.cssText = 'display:flex; flex-direction:column; gap:6px; margin-bottom:10px;';
 const gizmoLabel = document.createElement('div');
-gizmoLabel.textContent = 'Gizmo';
+gizmoLabel.textContent = getUILabel('gizmo', getCurrentLanguage());
 gizmoLabel.style.cssText = 'font-size:11px; text-transform:uppercase; letter-spacing:0.5px; opacity:0.7;';
 const gizmoRow = document.createElement('div');
 gizmoRow.style.cssText = 'display:flex; gap:6px; flex-wrap:wrap;';
@@ -868,9 +874,10 @@ function gzBtn(icon, label, title){
   b.style.cssText = 'flex:1 1 auto; display:inline-flex; align-items:center; justify-content:center; gap:5px; padding:6px 10px; border:none; border-radius:6px; background:rgba(60,60,70,0.9); color:#fff; font:600 11px var(--tc-font, system-ui); cursor:pointer;';
   return b;
 }
-const gzToggle = gzBtn(GZ_ICON.toggle, 'Gizmo', 'Gizmo aç/kapa');
-const gzMove = gzBtn(GZ_ICON.move, 'Taşı', 'Öteleme modu (G)');
-const gzRot  = gzBtn(GZ_ICON.rotate, 'Döndür', 'Rotasyon modu (R)');
+const _lang0 = getCurrentLanguage();
+const gzToggle = gzBtn(GZ_ICON.toggle, getUILabel('gizmo', _lang0), 'Gizmo aç/kapa');
+const gzMove = gzBtn(GZ_ICON.move, getUILabel('move', _lang0), 'Öteleme modu (G)');
+const gzRot  = gzBtn(GZ_ICON.rotate, getUILabel('rotate', _lang0), 'Rotasyon modu (R)');
 function refreshGizmoNav(){
   const on = !!params.showGizmo;
   gzToggle.style.background = on ? 'rgba(35,120,200,0.9)' : 'rgba(60,60,70,0.9)';
@@ -886,7 +893,7 @@ gizmoRow.appendChild(gzToggle);
 gizmoRow.appendChild(gzMove);
 gizmoRow.appendChild(gzRot);
 const gizmoHint = document.createElement('div');
-gizmoHint.textContent = 'Seçili nesneyi taşımak/döndürmek için. Fizik açıkken de kullanılabilir.';
+gizmoHint.textContent = getUILabel('gizmoHint', getCurrentLanguage());
 gizmoHint.style.cssText = 'font-size:11px; opacity:0.7; line-height:1.35;';
 gizmoNav.appendChild(gizmoLabel);
 gizmoNav.appendChild(gizmoRow);
@@ -976,7 +983,7 @@ const PHYS_ICON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" s
 const physNav = document.createElement('div');
 physNav.style.cssText = 'display:flex; align-items:center; gap:3px; margin-left:6px; flex-shrink:0;';
 const physBtn = document.createElement('button');
-physBtn.innerHTML = `${PHYS_ICON}<span>Fizik</span>`;
+physBtn.innerHTML = `${PHYS_ICON}<span>${getUILabel('physics', getCurrentLanguage())}</span>`;
 physBtn.title = 'Fizik motoru: nesneler düşer ve çarpışır (aç/kapa)';
 physBtn.style.cssText = 'display:inline-flex; align-items:center; gap:5px; padding:5px 9px; border:none; border-radius:6px; background:rgba(60,60,70,0.9); color:#fff; font:600 11px var(--tc-font, system-ui); cursor:pointer;';
 function refreshPhysicsNav(){
@@ -986,6 +993,28 @@ physBtn.onclick = () => setPhysicsEnabled(!params.physics);
 physNav.appendChild(physBtn);
 navBar.appendChild(physNav);
 refreshPhysicsNav();
+
+// Re-label every mainapp-owned button/label when the UI language changes, so
+// all on-screen controls follow the selected language (not just the navbar tabs).
+function relabelUI(lang){
+  const setSpan = (btn, txt) => { if (!btn) return; const s = btn.querySelector('span'); if (s) s.textContent = txt; else btn.textContent = txt; };
+  setSpan(gzToggle, getUILabel('gizmo', lang));
+  setSpan(gzMove, getUILabel('move', lang));
+  setSpan(gzRot, getUILabel('rotate', lang));
+  setSpan(physBtn, getUILabel('physics', lang));
+  if (gizmoLabel) gizmoLabel.textContent = getUILabel('gizmo', lang);
+  if (gizmoHint) gizmoHint.textContent = getUILabel('gizmoHint', lang);
+  if (statsTitle) statsTitle.textContent = getUILabel('stats', lang);
+  const objHandleEl = document.querySelector('.tc-obj-handle');
+  if (objHandleEl) objHandleEl.textContent = '⇕ ' + getUILabel('objectDrag', lang);
+  // Touch-gizmo Hide/Show toggle (built in setupTouchGizmo).
+  const tgToggle = document.querySelector('.tc-gizmo-toggle');
+  if (tgToggle){
+    const vis = tgToggle.dataset.visible !== '0';
+    tgToggle.textContent = getUILabel('gizmo', lang) + ' ' + getUILabel(vis ? 'hide' : 'show', lang);
+  }
+}
+if (onLanguageChange) onLanguageChange(relabelUI);
 
 function createMaterial(){
   const mat = new THREE.MeshPhysicalMaterial({
@@ -1123,9 +1152,17 @@ function rebuild(){
   // Keep camera fixed across rebuilds; just aim light
   if (knotGeometry && knotGeometry.boundingSphere){
     const radius = knotGeometry.boundingSphere.radius;
-    const upOffset = radius * 2.0 * 0.3; // raise object above ground proportionally
-    // Optionally, you can add upOffset to py if you want to keep the object above ground
-    // knotMesh.position.y += upOffset;
+    // On first load, lift the object 15% of its own height so it sits a little
+    // higher in frame. One-time only, and skipped if the object already carries
+    // a saved vertical offset (respects the user's own transform).
+    const savedPosY = rec && rec.params ? rec.params.posY : undefined;
+    if (!initialLiftApplied && (savedPosY === undefined || savedPosY === 0)){
+      const lift = radius * 2.0 * 0.15;
+      knotMesh.position.y += lift;
+      params.posY = +knotMesh.position.y.toFixed(3);
+      if (rec && rec.params) rec.params.posY = params.posY;
+      initialLiftApplied = true;
+    }
     spot.target.position.copy(knotMesh.position);
   }
 
