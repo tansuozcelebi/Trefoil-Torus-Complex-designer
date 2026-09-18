@@ -76,7 +76,7 @@ export function setupNavbar() {
     background: rgba(35,120,200,0.3); color: #fff; cursor: pointer;
     border-radius: 6px; font-size: 18px; line-height: 1;
     transition: background 0.2s ease; min-height: 44px; min-width: 44px;
-    margin-left: auto;
+    margin-right: auto;
   `;
   navBar.appendChild(hamburgerBtn);
 
@@ -174,13 +174,14 @@ export function setupNavbar() {
     
     const triggerBtn = document.querySelector(`button[data-tab="${name}"]`) ||
                        Array.from(document.querySelectorAll('button[data-tab]')).find(b => b.dataset.tab === name);
-    if (triggerBtn) {
+    // Keep the user's chosen position for panels they've dragged.
+    if (triggerBtn && panels[name].dataset.userMoved !== '1') {
       const rect = triggerBtn.getBoundingClientRect();
       const minW = 320;
       panels[name].style.minWidth = minW + 'px';
       let left = rect.left;
       let top = rect.bottom + 8;
-      
+
       const pw = Math.max(panels[name].offsetWidth || 0, minW);
       if (left + pw > window.innerWidth - 12) {
         left = Math.max(12, window.innerWidth - pw - 12);

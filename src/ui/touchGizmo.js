@@ -43,6 +43,9 @@ export function setupTouchGizmo(params, saveParamsToActive, applyTransform, gui,
     gizmoRoot.style.flexDirection = 'column';
     gizmoRoot.style.gap = '6px';
     gizmoRoot.style.pointerEvents = 'auto';
+    // Fixed size so the panel never changes width/shape.
+    gizmoRoot.style.width = '212px';
+    gizmoRoot.style.boxSizing = 'border-box';
 
     // DRAG HANDLE
     const dragBar = document.createElement('div');

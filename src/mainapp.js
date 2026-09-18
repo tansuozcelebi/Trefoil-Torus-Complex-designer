@@ -99,6 +99,30 @@ const { navBar, panels, showTab, activeInfo } = setupNavbar();
 // Environment panel will receive the toolbar
 const envPanel = panels['Environment'];
 const objectPanel = panels['Object'];
+// Make the Object (Nesne) panel draggable via a small handle at the top.
+if (objectPanel){
+  const objHandle = document.createElement('div');
+  objHandle.textContent = '⇕ Nesne — sürükle';
+  objHandle.style.cssText = 'cursor:move; user-select:none; font-size:11px; opacity:0.75; padding:2px 6px 8px; margin:-2px -2px 8px; border-bottom:1px solid rgba(255,255,255,0.1);';
+  objectPanel.insertBefore(objHandle, objectPanel.firstChild);
+  let od=false, odx=0, ody=0;
+  objHandle.addEventListener('pointerdown',(e)=>{
+    const r=objectPanel.getBoundingClientRect();
+    objectPanel.style.left=r.left+'px'; objectPanel.style.top=r.top+'px';
+    objectPanel.style.right='auto'; objectPanel.style.bottom='auto';
+    odx=e.clientX-r.left; ody=e.clientY-r.top; od=true; objectPanel.dataset.userMoved='1';
+    try{objHandle.setPointerCapture(e.pointerId);}catch(_){}
+    e.preventDefault();
+  });
+  objHandle.addEventListener('pointermove',(e)=>{
+    if(!od) return;
+    let nl=e.clientX-odx, nt=e.clientY-ody;
+    nl=Math.max(0,Math.min(window.innerWidth-objectPanel.offsetWidth, nl));
+    nt=Math.max(0,Math.min(window.innerHeight-objectPanel.offsetHeight, nt));
+    objectPanel.style.left=nl+'px'; objectPanel.style.top=nt+'px';
+  });
+  objHandle.addEventListener('pointerup',(e)=>{ if(od){od=false; try{objHandle.releasePointerCapture(e.pointerId);}catch(_){} } });
+}
 // Scene panel for selecting scenes/presets
 const scenePanel = panels['Scene'];
 // Export panel for exporting 3D models
