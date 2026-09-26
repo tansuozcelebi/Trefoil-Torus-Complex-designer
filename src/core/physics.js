@@ -25,6 +25,22 @@ export function createPhysics(groundY){
   let terrainBody = null;
   let baseGroundY = groundY;
 
+  // Notify when an object first touches the ground plane (used to spawn water
+  // ripples). cb(mesh, impactSpeed, worldX, worldZ).
+  let _groundContactCb = null;
+  function onGroundContact(cb){ _groundContactCb = cb; }
+  world.addEventListener('beginContact', (e) => {
+    if (!_groundContactCb) return;
+    let other = null;
+    if (e.bodyA === groundBody) other = e.bodyB;
+    else if (e.bodyB === groundBody) other = e.bodyA;
+    else return;
+    const link = links.find(l => l.body === other);
+    if (!link) return;
+    const p = other.position;
+    _groundContactCb(link.mesh, Math.abs(other.velocity.y), p.x, p.z);
+  });
+
   const links = []; // { mesh, body }
 
   // spec: { spheres: [{x,y,z,r}, ...] } for a compound collider that hugs the
@@ -131,5 +147,5 @@ export function createPhysics(groundY){
     groundBody.position.set(0, baseGroundY, 0);
   }
 
-  return { world, addBody, clear, step, setGroundY, setTerrain, clearTerrain, links };
+  return { world, addBody, clear, step, setGroundY, setTerrain, clearTerrain, onGroundContact, links };
 }

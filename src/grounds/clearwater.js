@@ -11,6 +11,9 @@ export function createClearwater(canvasEl, opts = {}){
   const vw = () => window.innerWidth;
   const vh = () => window.innerHeight;
   let _running = false, _raf = 0, _resizeHandler = null;
+  // When true, an external controller (the 3D scene's OrbitControls) drives the
+  // camera, so the internal idle motion and drag-inertia are disabled.
+  let _extCam = false;
 
 /* [adapted: removed] */
 /* [adapted: removed] */
@@ -90,7 +93,7 @@ in vec2 vUv; out vec4 o;
 const N = 256, LOGN = 8;
 const L = 4.6;               // patch size (m)
 const DEPTH = 1.6;          // mean depth (m)
-const TARGET_SLOPE = 0.078;  // RMS slope
+const TARGET_SLOPE = (opts.waveSlope != null ? opts.waveSlope : 0.145);  // RMS slope (higher = taller/steeper waves)
 
 function mulberry(a){ return ()=>{ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
 const rnd = mulberry(7);
@@ -778,7 +781,7 @@ function post(t){
 /* ---------------- Camera & input ---------------- */
 const SUN_EL = 31*Math.PI/180, SUN_AZ = 6*Math.PI/180;
 const SUNV = [Math.sin(SUN_AZ)*Math.cos(SUN_EL), Math.sin(SUN_EL), -Math.cos(SUN_AZ)*Math.cos(SUN_EL)];
-const cam = { yaw: Q.has('yaw')? parseFloat(Q.get('yaw')) : 0, pitch: Q.has('pitch')? parseFloat(Q.get('pitch')) : -0.72, vy:0, vp:0, h:1.55 };
+const cam = { yaw: Q.has('yaw')? parseFloat(Q.get('yaw')) : 0, pitch: Q.has('pitch')? parseFloat(Q.get('pitch')) : -0.72, vy:0, vp:0, h:1.55, px:0, pz:0 };
 let drag = null, lastTap = null;
 canvas.addEventListener('pointerdown', e => { canvas.setPointerCapture(e.pointerId); drag = {x:e.clientX, y:e.clientY, x0:e.clientX, y0:e.clientY, t:performance.now()}; });
 canvas.addEventListener('pointermove', e => {
@@ -800,7 +803,8 @@ function hideHint(){ clearTimeout(hintT); $hint.classList.add('off'); }
 if (FIXED_T!==null) $hint.style.display='none';
 
 function camBasis(t){
-  const hy = FIXED_T!==null ? 0 : 1;
+  // No idle bob when an external camera drives the view (locked to the 3D scene).
+  const hy = (FIXED_T!==null || _extCam) ? 0 : 1;
   const yaw = cam.yaw + hy*(0.010*Math.sin(t*0.31) + 0.005*Math.sin(t*0.83+1.3));
   const pit = cam.pitch + hy*(0.007*Math.sin(t*0.47+2.0) + 0.003*Math.sin(t*1.13));
   const roll = hy*(0.006*Math.sin(t*0.39+0.4));
@@ -809,10 +813,12 @@ function camBasis(t){
   let u = [r[1]*f[2]-r[2]*f[1], r[2]*f[0]-r[0]*f[2], r[0]*f[1]-r[1]*f[0]];
   const cr=Math.cos(roll), sr=Math.sin(roll);
   const r2 = r.map((x,i)=>x*cr + u[i]*sr), u2 = u.map((x,i)=>u[i]*cr - r[i]*sr);
-  const pos = [hy*0.03*Math.sin(t*0.21), cam.h + hy*0.015*Math.sin(t*0.57), hy*0.03*Math.cos(t*0.17)];
+  // cam.px/cam.pz let the water follow the 3D camera's world x/z so it reads as
+  // one continuous ground plane while orbiting.
+  const pos = [cam.px + hy*0.03*Math.sin(t*0.21), cam.h + hy*0.015*Math.sin(t*0.57), cam.pz + hy*0.03*Math.cos(t*0.17)];
   return { f, r:r2, u:u2, pos };
 }
-const VFOV = 64*Math.PI/180;
+let VFOV = 64*Math.PI/180;
 
 // screen tap -> point on water plane -> drop in ripple sim
 function tapToDrop(sx, sy, B){
@@ -836,7 +842,7 @@ function frame(now){
   const dt = Math.min(0.05, (now-last)/1000); last = now;
   tSim += dt;
   const t = FIXED_T!==null ? FIXED_T : tSim;
-  if (!drag){ cam.yaw += cam.vy*0.9; cam.pitch += cam.vp*0.9; cam.vy*=0.9; cam.vp*=0.9; cam.pitch = Math.max(-1.45, Math.min(0.35, cam.pitch)); }
+  if (!drag && !_extCam){ cam.yaw += cam.vy*0.9; cam.pitch += cam.vp*0.9; cam.vy*=0.9; cam.vp*=0.9; cam.pitch = Math.max(-1.45, Math.min(0.35, cam.pitch)); }
   if (!pebReady){ _raf = requestAnimationFrame(frame); return; }
   const B = camBasis(t);
 
@@ -900,5 +906,28 @@ function frame(now){
     try { const lose = gl.getExtension('WEBGL_lose_context'); if (lose) lose.loseContext(); } catch(e){}
   }
 
-  return { start, stop, resize, dispose, get running(){ return _running; } };
+  // Drive the water camera from an external controller (the 3D scene's camera),
+  // so the water reads as one continuous ground plane the object sits on.
+  // c: { px, pz, h, yaw, pitch, vfov } in the water's world frame (water at y=0).
+  function setCamera(c){
+    if (!c) return;
+    _extCam = true;
+    if (c.px !== undefined) cam.px = c.px;
+    if (c.pz !== undefined) cam.pz = c.pz;
+    if (c.h !== undefined) cam.h = Math.max(0.15, c.h);
+    if (c.yaw !== undefined) cam.yaw = c.yaw;
+    if (c.pitch !== undefined) cam.pitch = Math.max(-1.55, Math.min(0.12, c.pitch));
+    if (c.vfov !== undefined && c.vfov > 0) VFOV = c.vfov;
+  }
+
+  // Spawn a ripple at a world-plane position (x,z in the same frame as setCamera).
+  function dropAt(wx, wz, size = 0.03, strength = 0.12){
+    const u = (wx - ripCenter[0]) / RSIZE + 0.5, v = (wz - ripCenter[1]) / RSIZE + 0.5;
+    if (u < 0.03 || u > 0.97 || v < 0.03 || v > 0.97) return false;
+    drops.push([u, v, size, strength]);
+    ripActive = 0;
+    return true;
+  }
+
+  return { start, stop, resize, dispose, setCamera, dropAt, get running(){ return _running; } };
 }
