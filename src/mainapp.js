@@ -8,7 +8,7 @@ import { tabs as TabsConfig } from './ui/tabs.ts';
 import { setupGUI } from './ui/guiMenu.js';
 import { setupScenePanel } from './ui/scenePanel.js';
 import { setupTouchGizmo } from './ui/touchGizmo.js';
-import { getHelpHtml, getCurrentLanguage, setLanguage, languages, getTabLabel, getUILabel } from './ui/help.js';
+import { getHelpHtml, getCurrentLanguage, setLanguage, languages, getTabLabel, getUILabel, getGuiLabel } from './ui/help.js';
 import { getAboutHtml } from './ui/about.js';
 import { setupExportPanel } from './ui/exportMenu.js';
 import { setupNavbar } from './ui/navbar.js';
@@ -57,8 +57,17 @@ style.textContent = `
   .tc-panel button { font-size: 13px; line-height: 1.4; }
   .tc-panel small { font-size: 11px; }
   .tc-panel strong { font-weight: 600; }
-  /* dat.GUI embedded in the Object panel: match the app font */
-  .tc-panel .dg, .tc-panel .dg * { font-family: var(--tc-font) !important; }
+  /* dat.GUI (Object panel controls): match the app font AND size so menu text is
+     uniform across all panels. Targeted globally because dat.GUI mounts its own
+     root element (there is only one in the app). */
+  .dg, .dg * { font-family: var(--tc-font) !important; }
+  .dg .cr,
+  .dg .property-name,
+  .dg .c input[type="text"],
+  .dg .c select,
+  .dg li:not(.folder):not(.title) { font-size: 12px !important; }
+  .dg li.title { font-size: 12px !important; font-weight: 600; }
+  .dg .c input[type="text"] { line-height: 1.2; }
   /* panels and nav
      ensure high-contrast text and friendlier link color in About */
   div[style] a { color: #7fbfff; text-decoration: underline; }
@@ -90,6 +99,19 @@ style.textContent = `
       -webkit-mask-image: linear-gradient(to right, transparent, black 20px, black calc(100% - 20px), transparent);
       mask-image: linear-gradient(to right, transparent, black 20px, black calc(100% - 20px), transparent);
     }
+    /* Keep pop-out panels within the viewport and scrollable on phones. */
+    .tc-panel {
+      max-width: calc(100vw - 24px) !important;
+      max-height: 72vh !important;
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch;
+    }
+    /* dat.GUI is fixed at 320px; let it shrink to the panel width on mobile. */
+    .tc-panel .dg.main, .tc-panel .dg { width: 100% !important; max-width: 100% !important; }
+    .tc-panel .dg .c { width: 55% !important; }
+    .tc-panel .dg .property-name { width: 45% !important; }
+    /* When dat.GUI mounts at its own root (not inside a panel), still keep it in view. */
+    .dg.ac { max-width: calc(100vw - 24px); }
   }
 `;
 document.head.appendChild(style);
@@ -105,7 +127,9 @@ if (objectPanel){
   const objHandle = document.createElement('div');
   objHandle.className = 'tc-obj-handle';
   objHandle.textContent = '⇕ ' + getUILabel('objectDrag', getCurrentLanguage());
-  objHandle.style.cssText = 'cursor:move; user-select:none; font-size:11px; opacity:0.75; padding:2px 6px 8px; margin:-2px -2px 8px; border-bottom:1px solid rgba(255,255,255,0.1);';
+  // touch-action:none lets the header be dragged on touch devices (otherwise the
+  // browser treats the touch as a scroll and pointermove never fires).
+  objHandle.style.cssText = 'cursor:move; user-select:none; touch-action:none; font-size:12px; opacity:0.85; padding:6px 8px 8px; margin:-2px -2px 8px; border-bottom:1px solid rgba(255,255,255,0.1);';
   objectPanel.insertBefore(objHandle, objectPanel.firstChild);
   let od=false, odx=0, ody=0;
   objHandle.addEventListener('pointerdown',(e)=>{
@@ -143,7 +167,12 @@ const initScenePanel = () => {
     grid,
     shadowReceiver,
     getActiveRecord,
-    addObjectFromPreset
+    addObjectFromPreset,
+    (v) => {
+      params.reflectorOpacity = v;
+      if (reflector && reflector.material){ reflector.material.transparent = v < 1.0; reflector.material.opacity = v; }
+      try { saveParamsToActive(); } catch(e) {}
+    }
   );
 };
 
@@ -1080,6 +1109,24 @@ function relabelUI(lang){
     const vis = tgToggle.dataset.visible !== '0';
     tgToggle.textContent = getUILabel('gizmo', lang) + ' ' + getUILabel(vis ? 'hide' : 'show', lang);
   }
+  translateGuiRows(lang);
+}
+// Translate the Object panel's dat.GUI folder titles and descriptive controller
+// labels. The original English text is cached on the element so re-translation
+// from any language stays correct.
+function translateGuiRows(lang){
+  try {
+    const root = gui && gui.domElement;
+    if (!root) return;
+    root.querySelectorAll('li.title').forEach(el => {
+      if (el.dataset.enLabel === undefined) el.dataset.enLabel = el.textContent.trim();
+      el.textContent = getGuiLabel(el.dataset.enLabel, lang);
+    });
+    root.querySelectorAll('.property-name').forEach(el => {
+      if (el.dataset.enLabel === undefined) el.dataset.enLabel = el.textContent.trim();
+      el.textContent = getGuiLabel(el.dataset.enLabel, lang);
+    });
+  } catch(e) {}
 }
 if (onLanguageChange) onLanguageChange(relabelUI);
 
@@ -1393,9 +1440,13 @@ function setGroundStyle(style){
     scene.add(graniteObj.mesh);
     graniteObj.mesh.receiveShadow = true;
     // Polished granite: blend a reflection over the stone via the Reflector.
-    ground.visible = false;
     params.reflectorOpacity = 0.55;
     toggleReflection(true);
+    // toggleReflection re-shows the checker ground (needed for the Flat reflection
+    // mode); for granite the stone IS the floor, so hide the checker again and
+    // lift the reflector clear of the granite to avoid z-fighting/flicker.
+    ground.visible = false;
+    if (reflector) reflector.position.y = ground.position.y + 0.02;
   } else if (style === 'Math'){
     mathObj = makeMath(ground.position.y);
     scene.add(mathObj.mesh);
@@ -1596,9 +1647,17 @@ function animate(){
       if (t >= 1) ucsTween = null;
       if (controls) controls.update();
     }
-    // prepare viewport/scissor in bottom-left corner
+    // prepare viewport/scissor in bottom-left corner. If the (bottom-left) stats
+    // overlay sits over the corner, lift the gizmo above it so it stays visible.
     const size = UCS_SIZE;
-    const px = UCS_RECT.x, py = UCS_RECT.y;
+    const px = UCS_RECT.x;
+    let py = UCS_RECT.y;
+    if (statsOverlay && statsOverlay.style.display !== 'none'){
+      const r = statsOverlay.getBoundingClientRect();
+      if (r.left < 140 && r.bottom > window.innerHeight - 150){
+        py = Math.round(window.innerHeight - r.top) + 12;
+      }
+    }
     renderer.autoClear = false;
     renderer.clearDepth();
     renderer.setScissorTest(true);
@@ -1670,6 +1729,8 @@ window.showControlsGUI = function() {
 if (panels['Object'].style.display === 'block') {
   window.showControlsGUI();
 }
+// Apply the current language to the freshly-built dat.GUI rows.
+try { translateGuiRows(getCurrentLanguage()); } catch(e) {}
 
 // populate Home/About/Help panels with content (About/Help loaded from modules)
 // Home UI'yi kur (obje zaten oluşturuldu)
