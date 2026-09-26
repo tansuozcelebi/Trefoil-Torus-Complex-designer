@@ -940,11 +940,25 @@ function syncPhysicsBodies(){
   });
 }
 
+// When physics is on and a non-flat surface with a collider is active (the
+// mathematical surface), install its triangle-mesh terrain so objects fall
+// onto and rest on the real surface. Otherwise use the flat ground plane.
+function updateTerrainCollider(){
+  if (!physics.setTerrain) return;
+  const surf = currentGroundStyle === 'Math' ? mathObj : null;
+  if (params.physics && surf && surf.collider){
+    physics.setTerrain(surf.collider.vertices, surf.collider.indices);
+  } else {
+    physics.clearTerrain();
+  }
+}
+
 function setPhysicsEnabled(on){
   params.physics = !!on;
   if (params.physics){
     physics.setGroundY(ground.position.y);
     syncPhysicsBodies();
+    updateTerrainCollider();
     // A gentle nudge so bodies clearly come alive and interact.
     physics.links.forEach(l => {
       l.body.velocity.set((Math.random() - 0.5) * 1.6, 0, (Math.random() - 0.5) * 1.6);
@@ -956,6 +970,7 @@ function setPhysicsEnabled(on){
   } else {
     physicsHeldMesh = null;
     physics.clear();
+    physics.clearTerrain();
     // Write where things landed back into the object records / params.
     objects.forEach(o => {
       const m = o.mesh; if (!m) return;
@@ -1350,6 +1365,10 @@ function setGroundStyle(style){
     ground.visible = false;
     if (shadowReceiver) shadowReceiver.visible = false;
   }
+
+  // If physics is running, refresh the terrain collider for the new surface so
+  // objects collide with the mathematical surface (and revert to flat otherwise).
+  if (typeof updateTerrainCollider === 'function') updateTerrainCollider();
 }
 
 
