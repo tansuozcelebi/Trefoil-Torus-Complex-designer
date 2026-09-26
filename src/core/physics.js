@@ -19,6 +19,12 @@ export function createPhysics(groundY){
   groundBody.position.set(0, groundY, 0);
   world.addBody(groundBody);
 
+  // Optional terrain (a non-flat surface, e.g. the mathematical surface) that
+  // objects rest and roll on. When active the flat plane drops below it so it
+  // only catches objects that slide off the terrain's edge.
+  let terrainBody = null;
+  let baseGroundY = groundY;
+
   const links = []; // { mesh, body }
 
   // spec: { spheres: [{x,y,z,r}, ...] } for a compound collider that hugs the
@@ -101,7 +107,29 @@ export function createPhysics(groundY){
     }
   }
 
-  function setGroundY(y){ groundBody.position.set(0, y, 0); }
+  function setGroundY(y){
+    baseGroundY = y;
+    // Keep the flat plane at its low catch level while terrain is active.
+    groundBody.position.set(0, terrainBody ? y - 12 : y, 0);
+  }
 
-  return { world, addBody, clear, step, setGroundY, links };
+  // Replace the flat ground with a triangle-mesh terrain built from world-space
+  // vertices/indices. Objects then collide with the real surface shape.
+  function setTerrain(vertices, indices){
+    clearTerrain();
+    if (!vertices || !indices || !vertices.length || !indices.length) return;
+    const shape = new CANNON.Trimesh(vertices, indices);
+    terrainBody = new CANNON.Body({ type: CANNON.Body.STATIC, material: mat });
+    terrainBody.addShape(shape);
+    world.addBody(terrainBody);
+    // Drop the flat plane below the terrain so it only catches run-off.
+    groundBody.position.set(0, baseGroundY - 12, 0);
+  }
+
+  function clearTerrain(){
+    if (terrainBody){ world.removeBody(terrainBody); terrainBody = null; }
+    groundBody.position.set(0, baseGroundY, 0);
+  }
+
+  return { world, addBody, clear, step, setGroundY, setTerrain, clearTerrain, links };
 }
