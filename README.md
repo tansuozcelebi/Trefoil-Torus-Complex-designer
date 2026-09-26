@@ -3,6 +3,10 @@
 Bunu üniversitede yazmak için 2 ay uğraşmışken AI ile 2 saatte bitti.
 Muazzam kaliteli ayrıca ahde edip gölgelendiriyor.
 
+![alt text](image-2.png)
+
+Eski haline göre güncelleştirmeler yapıldı. Fizik motoru eklendi, ışıklandırma ve gölgelendirme iyileştirildi.
+
 ![alt text](image.png)
 
 Bunlara ek olarak bilinen sorunları var. Render işi ok parametreli biliyorsunuz.
