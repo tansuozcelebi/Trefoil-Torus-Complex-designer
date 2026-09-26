@@ -94,7 +94,7 @@ export async function createPresetThumbnail(preset){
 }
 
 // Build Scene panel UI and presets grid
-export function setupScenePanel(scenePanel, params, gui, rebuild, toggleReflection, grid, shadowReceiver, getActiveRecord, addObjectFromPreset){
+export function setupScenePanel(scenePanel, params, gui, rebuild, toggleReflection, grid, shadowReceiver, getActiveRecord, addObjectFromPreset, setReflectorOpacity){
   scenePanel.innerHTML = `
     <strong>Scene</strong>
     <div style="margin-top:8px">Choose a scene preset or toggle debug overlays.</div>
@@ -108,6 +108,13 @@ export function setupScenePanel(scenePanel, params, gui, rebuild, toggleReflecti
     </div>
     <div style="margin-top:10px">
       <label><input type="checkbox" id="toggleHelpers" /> Show Helpers</label>
+    </div>
+    <div style="margin-top:10px">
+      <label><input type="checkbox" id="sceneReflection" /> Reflection</label>
+    </div>
+    <div style="margin-top:8px; display:flex; align-items:center; gap:8px;">
+      <label for="sceneReflOpacity" style="white-space:nowrap;">Reflection opacity</label>
+      <input type="range" id="sceneReflOpacity" min="0" max="1" step="0.01" style="flex:1;" />
     </div>
     <div style="margin-top:16px; display:flex; align-items:center; justify-content:space-between; gap:8px;">
       <strong>Object Presets</strong>
@@ -141,6 +148,21 @@ export function setupScenePanel(scenePanel, params, gui, rebuild, toggleReflecti
     const checked = e.target.checked;
     grid.visible = checked;
     shadowReceiver.visible = checked;
+  });
+
+  // Reflection controls (moved here from the Object panel — they belong to the scene).
+  const reflChk = scenePanel.querySelector('#sceneReflection');
+  const reflOpacity = scenePanel.querySelector('#sceneReflOpacity');
+  if (reflChk) reflChk.checked = !!params.showReflection;
+  if (reflOpacity) reflOpacity.value = params.reflectorOpacity != null ? params.reflectorOpacity : 0.6;
+  reflChk && reflChk.addEventListener('change', (e) => {
+    params.showReflection = e.target.checked;
+    try { toggleReflection(params.showReflection); } catch(err) {}
+  });
+  reflOpacity && reflOpacity.addEventListener('input', (e) => {
+    const v = parseFloat(e.target.value);
+    params.reflectorOpacity = v;
+    if (typeof setReflectorOpacity === 'function') setReflectorOpacity(v);
   });
 
   // Build object presets grid

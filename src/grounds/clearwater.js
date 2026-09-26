@@ -320,8 +320,8 @@ uniform float uTanF, uAspect, uL, uDepth, uTime, uRipSize;
 uniform vec2 uCausShift, uRipCenter;
 
 const float IOR = 1.3335;
-const vec3 SIG_A = vec3(0.40, 0.074, 0.088);
-const vec3 SIG_S = vec3(0.028, 0.052, 0.068);
+const vec3 SIG_A = vec3(0.42, 0.058, 0.094);
+const vec3 SIG_S = vec3(0.020, 0.074, 0.064);
 const vec3 SIG_T = SIG_A + SIG_S;
 const vec3 SUN = vec3(1.0, 0.90, 0.74) * 6.0;
 const float PI = 3.14159265359;

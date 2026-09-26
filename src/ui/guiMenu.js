@@ -38,11 +38,8 @@ export function setupGUI(params, rebuild, updateMaterial, toggleReflection, togg
   lightsFolder.add(params, 'spotIntensity', 0, 5, 0.01).onChange((v) => { spot.intensity = v; saveParams && saveParams(); });
   lightsFolder.add(params, 'ambientIntensity', 0, 2, 0.01).onChange((v) => { ambient.intensity = v; saveParams && saveParams(); });
   lightsFolder.add(params, 'envMapIntensity', 0, 5, 0.01).onChange((v) => { if (knotMaterial) knotMaterial.envMapIntensity = v; saveParams && saveParams(); });
-  lightsFolder.add(params, 'showReflection').onChange((v) => { saveParams && saveParams(); toggleReflection(v); });
-  lightsFolder.add(params, 'reflectorOpacity', 0.0, 1.0, 0.01).name('Reflector Opacity').onChange((v) => {
-    if (reflector && reflector.material){ reflector.material.transparent = v < 1.0; reflector.material.opacity = v; }
-    saveParams && saveParams();
-  });
+  // Reflection controls live in the Scene panel (they belong to the scene, not
+  // the object); see setupScenePanel.
   lightsFolder.open();
 
   // View folder
