@@ -341,6 +341,7 @@ renderer.domElement.style.zIndex = '1';
 // WebGL2 pipeline on a background canvas, behind the transparent 3D canvas. ---
 let clearwater = null;         // Clearwater instance {start,stop,resize,dispose}
 let clearwaterCanvas = null;   // its dedicated background canvas
+let _cwSavedMaxPolar = null;   // OrbitControls.maxPolarAngle before Clearwater
 function enterClearwater(){
   if (!clearwaterCanvas){
     clearwaterCanvas = document.createElement('canvas');
@@ -351,19 +352,37 @@ function enterClearwater(){
   }
   clearwaterCanvas.style.display = 'block';
   if (!clearwater){
-    try { clearwater = makeClearwater(clearwaterCanvas); }
+    try {
+      clearwater = makeClearwater(clearwaterCanvas);
+      // Ripple the water where a physics object strikes its surface.
+      physics.onGroundContact((mesh, speed, x, z) => {
+        if (!clearwater || currentGroundStyle !== 'Clearwater') return;
+        const strength = Math.min(0.22, 0.05 + speed * 0.03);
+        const size = Math.min(0.05, 0.02 + speed * 0.004);
+        clearwater.dropAt(x, z, size, strength);
+      });
+    }
     catch(e){ console.error('Clearwater init failed', e); clearwater = null; }
   }
   if (clearwater) clearwater.start();
   // Make the 3D canvas transparent so the water shows behind the object.
   scene.background = null;
   renderer.setClearColor(0x000000, 0);
+  // Keep the camera above the water plane so it reads as the ground.
+  if (controls){
+    if (_cwSavedMaxPolar === null) _cwSavedMaxPolar = controls.maxPolarAngle;
+    controls.maxPolarAngle = 1.50; // ~86°, just above the horizon
+  }
 }
 function exitClearwater(){
   if (clearwater) clearwater.stop();
   if (clearwaterCanvas) clearwaterCanvas.style.display = 'none';
   scene.background = SCENE_BG;
   renderer.setClearColor(0x000000, 1);
+  if (controls && _cwSavedMaxPolar !== null){
+    controls.maxPolarAngle = _cwSavedMaxPolar;
+    _cwSavedMaxPolar = null;
+  }
 }
 
 const pmremGenerator = new THREE.PMREMGenerator(renderer);
@@ -1533,6 +1552,22 @@ function animate(){
   }
 
   controls.update();
+
+  // Lock the Clearwater water camera to the 3D camera so the water reads as one
+  // continuous ground plane at water level (ground.position.y) while orbiting.
+  if (clearwater && currentGroundStyle === 'Clearwater' && clearwater.running){
+    const P = camera.position, T = controls.target;
+    let dx = T.x - P.x, dy = T.y - P.y, dz = T.z - P.z;
+    const len = Math.hypot(dx, dy, dz) || 1;
+    dx /= len; dy /= len; dz /= len;
+    clearwater.setCamera({
+      px: P.x, pz: P.z,
+      h: P.y - ground.position.y,
+      yaw: Math.atan2(dx, -dz),
+      pitch: Math.asin(Math.max(-1, Math.min(1, dy))),
+      vfov: THREE.MathUtils.degToRad(camera.fov)
+    });
+  }
 
   // animate sea wave
   if (seaObj){
