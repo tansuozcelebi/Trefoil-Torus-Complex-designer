@@ -23,6 +23,7 @@ import { createMathSurface as makeMath } from './grounds/math.js';
 import { createRoom as makeRoom } from './grounds/room.js';
 import { createFunnel as makeFunnel } from './grounds/funnel.js';
 import { createGranite as makeGranite } from './grounds/granite.js';
+import { createClearwater as makeClearwater } from './grounds/clearwater.js';
 import { injectSeoContent } from './languages-seo.js';
 
 // Raycaster ve pointer tanımı sadece renderer'dan sonra olacak
@@ -316,17 +317,54 @@ const seaBtn = makeBtn('Sea Wave', () => setGroundStyle('Sea'));
 const mathBtn = makeBtn('Mathematical surface', () => setGroundStyle('Math'));
 const roomBtn = makeBtn('Room', () => setGroundStyle('Room'));
 const funnelBtn = makeBtn('Funnel', () => setGroundStyle('Funnel'));
+const clearwaterBtn = makeBtn('Clearwater', () => setGroundStyle('Clearwater'));
 toolbar.appendChild(flatBtn);
 toolbar.appendChild(graniteBtn);
 toolbar.appendChild(seaBtn);
 toolbar.appendChild(mathBtn);
 toolbar.appendChild(roomBtn);
 toolbar.appendChild(funnelBtn);
+toolbar.appendChild(clearwaterBtn);
 
 const { renderer, scene, camera } = createRendererAndScene(container);
-scene.background = new THREE.Color(0x0b0f14);
+const SCENE_BG = new THREE.Color(0x0b0f14);
+scene.background = SCENE_BG;
 // Initial framing: camera pulled 20% further back from the scene origin.
 camera.position.set(6, 3.6, 9.6);
+
+// The 3D canvas sits above the (optional) Clearwater water background canvas.
+renderer.domElement.style.position = 'fixed';
+renderer.domElement.style.inset = '0';
+renderer.domElement.style.zIndex = '1';
+
+// --- Clearwater: a full-screen real-time water environment rendered by its own
+// WebGL2 pipeline on a background canvas, behind the transparent 3D canvas. ---
+let clearwater = null;         // Clearwater instance {start,stop,resize,dispose}
+let clearwaterCanvas = null;   // its dedicated background canvas
+function enterClearwater(){
+  if (!clearwaterCanvas){
+    clearwaterCanvas = document.createElement('canvas');
+    clearwaterCanvas.id = 'clearwater-bg';
+    clearwaterCanvas.setAttribute('aria-hidden', 'true');
+    clearwaterCanvas.style.cssText = 'position:fixed; inset:0; width:100%; height:100%; display:block; z-index:0; pointer-events:none;';
+    document.body.insertBefore(clearwaterCanvas, document.body.firstChild);
+  }
+  clearwaterCanvas.style.display = 'block';
+  if (!clearwater){
+    try { clearwater = makeClearwater(clearwaterCanvas); }
+    catch(e){ console.error('Clearwater init failed', e); clearwater = null; }
+  }
+  if (clearwater) clearwater.start();
+  // Make the 3D canvas transparent so the water shows behind the object.
+  scene.background = null;
+  renderer.setClearColor(0x000000, 0);
+}
+function exitClearwater(){
+  if (clearwater) clearwater.stop();
+  if (clearwaterCanvas) clearwaterCanvas.style.display = 'none';
+  scene.background = SCENE_BG;
+  renderer.setClearColor(0x000000, 1);
+}
 
 const pmremGenerator = new THREE.PMREMGenerator(renderer);
 pmremGenerator.compileEquirectangularShader();
@@ -1306,6 +1344,7 @@ function setGroundStyle(style){
   if (roomObj){ scene.remove(roomObj.mesh); roomObj.dispose?.(); roomObj = null; }
   if (funnelObj){ scene.remove(funnelObj.mesh); funnelObj.dispose?.(); funnelObj = null; }
   if (graniteObj){ scene.remove(graniteObj.mesh); graniteObj.dispose?.(); graniteObj = null; }
+  if (style !== 'Clearwater') exitClearwater();
   if (reflector) { reflector.visible = false; }
   ground.visible = false;
   // Shadow-catcher off by default; enabled only for surfaces that can't
@@ -1359,6 +1398,11 @@ function setGroundStyle(style){
     // Shadow should fall onto the funnel surface, not the flat plane
     ground.visible = false;
     if (shadowReceiver) shadowReceiver.visible = false;
+  } else if (style === 'Clearwater'){
+    // Full-screen real-time water rendered behind the transparent 3D canvas.
+    ground.visible = false;
+    if (shadowReceiver) shadowReceiver.visible = false;
+    enterClearwater();
   }
 
   // If physics is running, refresh the terrain collider for the new surface so
