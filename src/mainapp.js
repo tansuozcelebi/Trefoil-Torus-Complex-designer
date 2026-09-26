@@ -892,12 +892,8 @@ gzRot.onclick  = () => { params.showGizmo = true; setGizmoMode('rotate'); attach
 gizmoRow.appendChild(gzToggle);
 gizmoRow.appendChild(gzMove);
 gizmoRow.appendChild(gzRot);
-const gizmoHint = document.createElement('div');
-gizmoHint.textContent = getUILabel('gizmoHint', getCurrentLanguage());
-gizmoHint.style.cssText = 'font-size:11px; opacity:0.7; line-height:1.35;';
 gizmoNav.appendChild(gizmoLabel);
 gizmoNav.appendChild(gizmoRow);
-gizmoNav.appendChild(gizmoHint);
 // gizmoNav is embedded into the on-screen touch-gizmo panel (see setupTouchGizmo).
 refreshGizmoNav();
 
@@ -1018,7 +1014,6 @@ function relabelUI(lang){
   setSpan(gzRot, getUILabel('rotate', lang));
   setSpan(physBtn, getUILabel('physics', lang));
   if (gizmoLabel) gizmoLabel.textContent = getUILabel('gizmo', lang);
-  if (gizmoHint) gizmoHint.textContent = getUILabel('gizmoHint', lang);
   if (statsTitle) statsTitle.textContent = getUILabel('stats', lang);
   const objHandleEl = document.querySelector('.tc-obj-handle');
   if (objHandleEl) objHandleEl.textContent = '⇕ ' + getUILabel('objectDrag', lang);

@@ -186,6 +186,7 @@ export function setupTouchGizmo(params, saveParamsToActive, applyTransform, gui,
       panel.appendChild(b);
     });
 
+    let modeButtonsWrap = null;
     const toggle = document.createElement('button');
     toggle.className = 'tc-gizmo-toggle';
     const toggleLabel = () => {
@@ -204,6 +205,7 @@ export function setupTouchGizmo(params, saveParamsToActive, applyTransform, gui,
     toggle.addEventListener('click', ()=>{
       gizmoVisible = !gizmoVisible;
       panel.style.display = gizmoVisible ? 'grid' : 'none';
+      if (modeButtonsWrap) modeButtonsWrap.style.display = gizmoVisible ? 'block' : 'none';
       toggle.dataset.visible = gizmoVisible ? '1' : '0';
       toggle.textContent = toggleLabel();
     });
@@ -211,10 +213,10 @@ export function setupTouchGizmo(params, saveParamsToActive, applyTransform, gui,
     gizmoRoot.appendChild(dragBar);
     // Gizmo mode buttons (Gizmo/Taşı/Döndür) supplied by the app.
     if (opts.modeButtons){
-      const wrap = document.createElement('div');
-      wrap.style.cssText = 'padding:8px; background:rgba(15,15,20,0.88); border-left:1px solid rgba(255,255,255,0.12); border-right:1px solid rgba(255,255,255,0.12);';
-      wrap.appendChild(opts.modeButtons);
-      gizmoRoot.appendChild(wrap);
+      modeButtonsWrap = document.createElement('div');
+      modeButtonsWrap.style.cssText = 'padding:8px; background:rgba(15,15,20,0.88); border-left:1px solid rgba(255,255,255,0.12); border-right:1px solid rgba(255,255,255,0.12);';
+      modeButtonsWrap.appendChild(opts.modeButtons);
+      gizmoRoot.appendChild(modeButtonsWrap);
     }
     gizmoRoot.appendChild(panel);
     gizmoRoot.appendChild(toggle);
