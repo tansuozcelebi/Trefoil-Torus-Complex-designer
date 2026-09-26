@@ -1,4 +1,5 @@
 // Touch 6-axis Transform Gizmo (Mobile/Tablet)
+import { getUILabel, getCurrentLanguage } from './help.js';
 
 function isTouchDevice(){
   return ('ontouchstart' in window) || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0;
@@ -10,10 +11,14 @@ const moveStepBase = 0.1;
 const rotStep = 5; // degrees
 let repeatTimer = null;
 
-// Setup touch gizmo with dependencies from main app
-export function setupTouchGizmo(params, saveParamsToActive, applyTransform, gui){
-  if (!isTouchDevice()) return;
-  
+// Setup touch gizmo with dependencies from main app.
+// opts: { modeButtons?: HTMLElement, onTransformStart?, onTransformEnd? }
+// The on-screen gizmo panel now shows on all devices (not only touch) and hosts
+// the gizmo mode buttons; onTransformStart/End let the app grab the object in
+// the physics sim while it is being moved.
+export function setupTouchGizmo(params, saveParamsToActive, applyTransform, gui, opts = {}){
+  void isTouchDevice; // kept for reference; panel now shows on all devices
+
   function applyAndSaveTransform(){
     saveParamsToActive();
     applyTransform();
@@ -39,6 +44,9 @@ export function setupTouchGizmo(params, saveParamsToActive, applyTransform, gui)
     gizmoRoot.style.flexDirection = 'column';
     gizmoRoot.style.gap = '6px';
     gizmoRoot.style.pointerEvents = 'auto';
+    // Fixed size so the panel never changes width/shape.
+    gizmoRoot.style.width = '212px';
+    gizmoRoot.style.boxSizing = 'border-box';
 
     // DRAG HANDLE
     const dragBar = document.createElement('div');
@@ -142,11 +150,15 @@ export function setupTouchGizmo(params, saveParamsToActive, applyTransform, gui)
     }
 
     function handleAction(fn){
+      if (opts.onTransformStart) { try { opts.onTransformStart(); } catch(e){} }
       fn();
       clearInterval(repeatTimer);
       repeatTimer = setInterval(fn, 120);
     }
-    function stopRepeat(){ clearInterval(repeatTimer); repeatTimer=null; }
+    function stopRepeat(){
+      clearInterval(repeatTimer); repeatTimer = null;
+      if (opts.onTransformEnd) { try { opts.onTransformEnd(); } catch(e){} }
+    }
 
     const actions = [
       { label:'X+', fn:()=>{ params.posX += moveStepBase; applyAndSaveTransform(); } },
@@ -175,7 +187,13 @@ export function setupTouchGizmo(params, saveParamsToActive, applyTransform, gui)
     });
 
     const toggle = document.createElement('button');
-    toggle.textContent = 'Gizmo Hide';
+    toggle.className = 'tc-gizmo-toggle';
+    const toggleLabel = () => {
+      const lang = getCurrentLanguage();
+      return getUILabel('gizmo', lang) + ' ' + getUILabel(gizmoVisible ? 'hide' : 'show', lang);
+    };
+    toggle.dataset.visible = gizmoVisible ? '1' : '0';
+    toggle.textContent = toggleLabel();
     toggle.style.marginTop = '6px';
     toggle.style.padding = '8px 10px';
     toggle.style.border = 'none';
@@ -186,10 +204,18 @@ export function setupTouchGizmo(params, saveParamsToActive, applyTransform, gui)
     toggle.addEventListener('click', ()=>{
       gizmoVisible = !gizmoVisible;
       panel.style.display = gizmoVisible ? 'grid' : 'none';
-      toggle.textContent = gizmoVisible ? 'Gizmo Hide' : 'Gizmo Show';
+      toggle.dataset.visible = gizmoVisible ? '1' : '0';
+      toggle.textContent = toggleLabel();
     });
 
     gizmoRoot.appendChild(dragBar);
+    // Gizmo mode buttons (Gizmo/Taşı/Döndür) supplied by the app.
+    if (opts.modeButtons){
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'padding:8px; background:rgba(15,15,20,0.88); border-left:1px solid rgba(255,255,255,0.12); border-right:1px solid rgba(255,255,255,0.12);';
+      wrap.appendChild(opts.modeButtons);
+      gizmoRoot.appendChild(wrap);
+    }
     gizmoRoot.appendChild(panel);
     gizmoRoot.appendChild(toggle);
     document.body.appendChild(gizmoRoot);

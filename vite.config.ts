@@ -32,7 +32,8 @@ export default defineConfig({
           'three-addons': [
             'three/examples/jsm/controls/OrbitControls.js',
             'three/examples/jsm/controls/TransformControls.js',
-            'three/examples/jsm/objects/Reflector.js'
+            'three/examples/jsm/objects/Reflector.js',
+            'three/examples/jsm/objects/Water.js'
           ],
           // React libraries
           'react-vendor': ['react', 'react-dom'],

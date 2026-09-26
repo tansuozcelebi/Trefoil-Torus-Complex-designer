@@ -1,7 +1,7 @@
-# 🧩 SEO & Semantic Enhancement Instructions for `trefoil.fabus.app`
+# 🧩 SEO & Semantic Enhancement Instructions for `trefoil.krea.tr`
 
 ## 🎯 Goal
-Enhance the SEO visibility of the **Trefoil 3D Visualization Website** (`trefoil.fabus.app`) by embedding descriptive metadata, structured data (JSON-LD), and invisible semantic text that helps search engines index the site for topics such as **parametric surfaces, parametric curves, knot theory, 3D mathematical visualization, WebGL, and Three.js**.
+Enhance the SEO visibility of the **Trefoil 3D Visualization Website** (`trefoil.krea.tr`) by embedding descriptive metadata, structured data (JSON-LD), and invisible semantic text that helps search engines index the site for topics such as **parametric surfaces, parametric curves, knot theory, 3D mathematical visualization, WebGL, and Three.js**.
 
 ---
 
@@ -19,13 +19,13 @@ Add the following tags into the `<head>` section of the main page (index.html or
 <meta property="og:title" content="Trefoil Knot – Parametric 3D Surface Visualization" />
 <meta property="og:description" content="A real-time interactive 3D visualization of the trefoil knot and parametric surfaces using WebGL and Three.js." />
 <meta property="og:type" content="website" />
-<meta property="og:image" content="https://trefoil.fabus.app/preview.jpg" />
-<meta property="og:url" content="https://trefoil.fabus.app/" />
+<meta property="og:image" content="https://trefoil.krea.tr/preview.jpg" />
+<meta property="og:url" content="https://trefoil.krea.tr/" />
 
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="Trefoil Knot Visualization" />
 <meta name="twitter:description" content="Interactive 3D trefoil knot built with Three.js and WebGL showcasing parametric geometry." />
-<meta name="twitter:image" content="https://trefoil.fabus.app/preview.jpg" />
+<meta name="twitter:image" content="https://trefoil.krea.tr/preview.jpg" />
 ```
 
 ---
@@ -46,7 +46,7 @@ Insert this inside `<head>` after meta tags:
     "@type": "Organization",
     "name": "KREA Makina"
   },
-  "url": "https://trefoil.fabus.app/",
+  "url": "https://trefoil.krea.tr/",
   "inLanguage": "en",
   "license": "https://creativecommons.org/licenses/by/4.0/",
   "datePublished": "2025-11-01"
@@ -103,7 +103,7 @@ Add one or more of these short descriptions inside the visible content area of t
   ```
 - Keep the site URL canonical:
   ```html
-  <link rel="canonical" href="https://trefoil.fabus.app/" />
+  <link rel="canonical" href="https://trefoil.krea.tr/" />
   ```
 - Ensure the 3D canvas element has an accessible name:
   ```html
@@ -119,7 +119,7 @@ Add one or more of these short descriptions inside the visible content area of t
 ## ✅ Summary
 
 After applying these changes:
-- Search engines like Google, Bing, and Yandex will associate `trefoil.fabus.app` with **3D mathematical visualization**, **parametric curves**, and **knot theory**.
+- Search engines like Google, Bing, and Yandex will associate `trefoil.krea.tr` with **3D mathematical visualization**, **parametric curves**, and **knot theory**.
 - The page will be eligible for rich search results and educational discovery categories.
 - Users searching for “parametric trefoil knot,” “3D mathematical model,” or “Three.js topology” will easily find the website.
 
@@ -127,4 +127,4 @@ After applying these changes:
 
 **Prepared by:**  
 Tansu Ozcelebi  
-For use by Claude (Anthropic) to implement on `trefoil.fabus.app`
+For use by Claude (Anthropic) to implement on `trefoil.krea.tr`

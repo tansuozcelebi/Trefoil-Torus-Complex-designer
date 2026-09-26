@@ -2,12 +2,13 @@ import * as THREE from 'three';
 import { createRendererAndScene } from './core/scene.js';
 import { createBaseGround } from './core/ground.js';
 import { createLights } from './core/lights.js';
+import { createPhysics } from './core/physics.js';
 import { setupKeyboardControls } from './controls/keyboard.js';
 import { tabs as TabsConfig } from './ui/tabs.ts';
 import { setupGUI } from './ui/guiMenu.js';
 import { setupScenePanel } from './ui/scenePanel.js';
 import { setupTouchGizmo } from './ui/touchGizmo.js';
-import { getHelpHtml, getCurrentLanguage, setLanguage, languages, getTabLabel } from './ui/help.js';
+import { getHelpHtml, getCurrentLanguage, setLanguage, languages, getTabLabel, getUILabel } from './ui/help.js';
 import { getAboutHtml } from './ui/about.js';
 import { setupExportPanel } from './ui/exportMenu.js';
 import { setupNavbar } from './ui/navbar.js';
@@ -21,6 +22,7 @@ import { createSea as makeSea } from './grounds/sea.js';
 import { createMathSurface as makeMath } from './grounds/math.js';
 import { createRoom as makeRoom } from './grounds/room.js';
 import { createFunnel as makeFunnel } from './grounds/funnel.js';
+import { createGranite as makeGranite } from './grounds/granite.js';
 import { injectSeoContent } from './languages-seo.js';
 
 // Raycaster ve pointer tanımı sadece renderer'dan sonra olacak
@@ -92,11 +94,36 @@ style.textContent = `
 document.head.appendChild(style);
 
 // Initialize navbar module - replaces ~560 lines of inline navbar setup code
-const { navBar, panels, showTab, activeInfo } = setupNavbar();
+const { navBar, panels, showTab, activeInfo, updateLanguage, onLanguageChange } = setupNavbar();
 
 // Environment panel will receive the toolbar
 const envPanel = panels['Environment'];
 const objectPanel = panels['Object'];
+// Make the Object (Nesne) panel draggable via a small handle at the top.
+if (objectPanel){
+  const objHandle = document.createElement('div');
+  objHandle.className = 'tc-obj-handle';
+  objHandle.textContent = '⇕ ' + getUILabel('objectDrag', getCurrentLanguage());
+  objHandle.style.cssText = 'cursor:move; user-select:none; font-size:11px; opacity:0.75; padding:2px 6px 8px; margin:-2px -2px 8px; border-bottom:1px solid rgba(255,255,255,0.1);';
+  objectPanel.insertBefore(objHandle, objectPanel.firstChild);
+  let od=false, odx=0, ody=0;
+  objHandle.addEventListener('pointerdown',(e)=>{
+    const r=objectPanel.getBoundingClientRect();
+    objectPanel.style.left=r.left+'px'; objectPanel.style.top=r.top+'px';
+    objectPanel.style.right='auto'; objectPanel.style.bottom='auto';
+    odx=e.clientX-r.left; ody=e.clientY-r.top; od=true; objectPanel.dataset.userMoved='1';
+    try{objHandle.setPointerCapture(e.pointerId);}catch(_){}
+    e.preventDefault();
+  });
+  objHandle.addEventListener('pointermove',(e)=>{
+    if(!od) return;
+    let nl=e.clientX-odx, nt=e.clientY-ody;
+    nl=Math.max(0,Math.min(window.innerWidth-objectPanel.offsetWidth, nl));
+    nt=Math.max(0,Math.min(window.innerHeight-objectPanel.offsetHeight, nt));
+    objectPanel.style.left=nl+'px'; objectPanel.style.top=nt+'px';
+  });
+  objHandle.addEventListener('pointerup',(e)=>{ if(od){od=false; try{objHandle.releasePointerCapture(e.pointerId);}catch(_){} } });
+}
 // Scene panel for selecting scenes/presets
 const scenePanel = panels['Scene'];
 // Export panel for exporting 3D models
@@ -133,42 +160,132 @@ const initExportPanel = () => {
 // Version is injected by Vite (define) from package.json and bumped on each build.
 const APP_VERSION = 'v' + (typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.0.0');
 const statsOverlay = document.createElement('div');
-statsOverlay.style.position = 'fixed';
-statsOverlay.style.left = '12px';
-statsOverlay.style.bottom = '12px';
-statsOverlay.style.zIndex = '1000';
-statsOverlay.style.padding = '8px 10px';
-statsOverlay.style.background = 'rgba(0,0,0,0.6)';
-statsOverlay.style.color = '#fff';
-statsOverlay.style.fontFamily = 'monospace';
-statsOverlay.style.fontSize = '13px';
-statsOverlay.style.borderRadius = '6px';
-statsOverlay.style.minWidth = '120px';
-statsOverlay.style.maxWidth = '260px';
-
-// Active object info moved here from the navbar. `activeInfo` comes from
-// setupNavbar(); we restyle it for the panel and place it on top. It is a
-// sibling of the metrics line so per-frame stat updates don't wipe it.
-activeInfo.style.cssText = `
-  color: #3fa7ff; font-size: 12px; margin-bottom: 6px; min-height: 14px;
-  word-break: break-word; line-height: 1.3;
+statsOverlay.style.cssText = `
+  position: fixed; left: 12px; bottom: 12px; z-index: 1000;
+  background: rgba(0,0,0,0.6); color: #fff; font-family: monospace; font-size: 13px;
+  border-radius: 6px; min-width: 150px; max-width: 300px; overflow: hidden;
 `;
+
+// Header doubles as the drag handle and carries the close button.
+const statsHeader = document.createElement('div');
+statsHeader.style.cssText = `
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  padding: 5px 8px; cursor: move; background: rgba(255,255,255,0.06); user-select: none;
+`;
+const statsTitle = document.createElement('span');
+statsTitle.textContent = getUILabel('stats', getCurrentLanguage());
+statsTitle.style.cssText = 'font-size:11px; letter-spacing:0.4px; opacity:0.85;';
+const statsClose = document.createElement('button');
+statsClose.textContent = '✕';
+statsClose.title = 'Kapat';
+statsClose.style.cssText = 'border:none; background:transparent; color:#fff; cursor:pointer; font-size:13px; line-height:1; padding:0 2px; opacity:0.7;';
+statsHeader.appendChild(statsTitle);
+statsHeader.appendChild(statsClose);
+
+const statsBody = document.createElement('div');
+statsBody.style.cssText = 'padding: 8px 10px;';
+// Active object info (comes from setupNavbar). Restyled for the panel.
+activeInfo.style.cssText = `color:#3fa7ff; font-size:12px; margin-bottom:6px; min-height:14px; word-break:break-word; line-height:1.3;`;
 const statsMetrics = document.createElement('div');
-statsMetrics.innerHTML = `Verts: 0<br/>Faces: 0<br/><span style="display:inline-block;margin-top:4px;font-size:11px;color:#7da6cc;opacity:0.9">${APP_VERSION}</span>`;
-statsOverlay.appendChild(activeInfo);
-statsOverlay.appendChild(statsMetrics);
+statsBody.appendChild(activeInfo);
+statsBody.appendChild(statsMetrics);
+
+statsOverlay.appendChild(statsHeader);
+statsOverlay.appendChild(statsBody);
 document.body.appendChild(statsOverlay);
 
-function updateStats(){
-  if (!knotGeometry) {
-    statsMetrics.innerHTML = `Verts: 0<br/>Faces: 0<br/><span style="display:inline-block;margin-top:4px;font-size:11px;color:#7da6cc;opacity:0.9">${APP_VERSION}</span>`;
-    return;
+// Small chip to re-open the panel after it's closed.
+const statsRestore = document.createElement('button');
+statsRestore.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" style="flex:0 0 auto"><path d="M4 20V10M10 20V4M16 20v-6M22 20H2"/></svg><span>İstatistik</span>';
+statsRestore.style.cssText = `position:fixed; left:12px; bottom:12px; z-index:1000; display:none; align-items:center; gap:6px; padding:6px 10px; border:none; border-radius:6px; background:rgba(0,0,0,0.6); color:#fff; font:600 11px monospace; cursor:pointer;`;
+document.body.appendChild(statsRestore);
+
+// --- Persist position + closed state ---
+const STATS_KEY = 'tc_stats_ui';
+function saveStatsUi(){
+  try {
+    localStorage.setItem(STATS_KEY, JSON.stringify({
+      left: statsOverlay.style.left || null,
+      top: statsOverlay.style.top || null,
+      hidden: statsOverlay.style.display === 'none'
+    }));
+  } catch(e) {}
+}
+try {
+  const s = JSON.parse(localStorage.getItem(STATS_KEY) || 'null');
+  if (s){
+    if (s.top){ statsOverlay.style.left = s.left; statsOverlay.style.top = s.top; statsOverlay.style.bottom = 'auto'; }
+    if (s.hidden){ statsOverlay.style.display = 'none'; statsRestore.style.display = 'inline-flex'; }
   }
-  const verts = knotGeometry.attributes && knotGeometry.attributes.position ? knotGeometry.attributes.position.count : 0;
-  let faces = 0;
-  if (knotGeometry.index) faces = Math.floor(knotGeometry.index.count / 3);
-  else faces = Math.floor(verts / 3);
-  statsMetrics.innerHTML = `Verts: ${verts.toLocaleString()}<br/>Faces: ${faces.toLocaleString()}<br/><span style="display:inline-block;margin-top:4px;font-size:11px;color:#7da6cc;opacity:0.9">${APP_VERSION}</span>`;
+} catch(e) {}
+
+// --- Close / restore ---
+statsClose.addEventListener('click', (e) => {
+  e.stopPropagation();
+  statsOverlay.style.display = 'none';
+  statsRestore.style.display = 'inline-flex';
+  saveStatsUi();
+});
+statsRestore.addEventListener('click', () => {
+  statsOverlay.style.display = 'block';
+  statsRestore.style.display = 'none';
+  saveStatsUi();
+});
+
+// --- Drag by the header ---
+let _statsDrag = false, _sdx = 0, _sdy = 0;
+statsHeader.addEventListener('pointerdown', (e) => {
+  if (e.target === statsClose) return; // let the close button click through
+  const r = statsOverlay.getBoundingClientRect();
+  statsOverlay.style.left = r.left + 'px';
+  statsOverlay.style.top = r.top + 'px';
+  statsOverlay.style.bottom = 'auto';
+  _sdx = e.clientX - r.left;
+  _sdy = e.clientY - r.top;
+  _statsDrag = true;
+  try { statsHeader.setPointerCapture(e.pointerId); } catch(_) {}
+  e.preventDefault();
+});
+statsHeader.addEventListener('pointermove', (e) => {
+  if (!_statsDrag) return;
+  let nl = e.clientX - _sdx, nt = e.clientY - _sdy;
+  nl = Math.max(0, Math.min(window.innerWidth - statsOverlay.offsetWidth, nl));
+  nt = Math.max(0, Math.min(window.innerHeight - statsOverlay.offsetHeight, nt));
+  statsOverlay.style.left = nl + 'px';
+  statsOverlay.style.top = nt + 'px';
+});
+statsHeader.addEventListener('pointerup', (e) => {
+  if (!_statsDrag) return;
+  _statsDrag = false;
+  try { statsHeader.releasePointerCapture(e.pointerId); } catch(_) {}
+  saveStatsUi();
+});
+
+function updateStats(){
+  const fmt = (n) => (n || 0).toLocaleString();
+  // Active object counts
+  let av = 0, af = 0;
+  if (knotGeometry && knotGeometry.attributes && knotGeometry.attributes.position){
+    av = knotGeometry.attributes.position.count;
+    af = knotGeometry.index ? Math.floor(knotGeometry.index.count / 3) : Math.floor(av / 3);
+  }
+  // Scene totals across all objects
+  let tv = 0, tf = 0, count = 0;
+  try {
+    (objects || []).forEach(o => {
+      const g = (o.mesh && o.mesh.geometry) || o.geometry;
+      if (!g || !g.attributes || !g.attributes.position) return;
+      const v = g.attributes.position.count;
+      tv += v;
+      tf += g.index ? Math.floor(g.index.count / 3) : Math.floor(v / 3);
+      count++;
+    });
+  } catch(e) {}
+  statsMetrics.innerHTML =
+    `Verts: ${fmt(av)}<br/>Faces: ${fmt(af)}`
+    + `<div style="margin-top:5px; padding-top:5px; border-top:1px solid rgba(255,255,255,0.12); color:#9fd0a0;">`
+    + `Sahne — Yüzey: ${fmt(tf)} · Köşe: ${fmt(tv)} <span style="opacity:0.7">(${count} nesne)</span></div>`
+    + `<span style="display:inline-block;margin-top:5px;font-size:11px;color:#7da6cc;opacity:0.9">${APP_VERSION}</span>`;
 }
 
 // top toolbar for ground style (moved into Environment panel)
@@ -194,11 +311,13 @@ function makeBtn(label, onClick){
 }
 
 const flatBtn = makeBtn('Flat', () => setGroundStyle('Flat'));
+const graniteBtn = makeBtn('Granite (reflective)', () => setGroundStyle('Granite'));
 const seaBtn = makeBtn('Sea Wave', () => setGroundStyle('Sea'));
 const mathBtn = makeBtn('Mathematical surface', () => setGroundStyle('Math'));
 const roomBtn = makeBtn('Room', () => setGroundStyle('Room'));
 const funnelBtn = makeBtn('Funnel', () => setGroundStyle('Funnel'));
 toolbar.appendChild(flatBtn);
+toolbar.appendChild(graniteBtn);
 toolbar.appendChild(seaBtn);
 toolbar.appendChild(mathBtn);
 toolbar.appendChild(roomBtn);
@@ -206,7 +325,8 @@ toolbar.appendChild(funnelBtn);
 
 const { renderer, scene, camera } = createRendererAndScene(container);
 scene.background = new THREE.Color(0x0b0f14);
-camera.position.set(5, 3, 8);
+// Initial framing: camera pulled 20% further back from the scene origin.
+camera.position.set(6, 3.6, 9.6);
 
 const pmremGenerator = new THREE.PMREMGenerator(renderer);
 pmremGenerator.compileEquirectangularShader();
@@ -217,12 +337,17 @@ const { ambient, spot } = createLights(scene);
 // Ground + shadow receiver
 const { ground, shadowReceiver, shadowCatcher, groundSize } = createBaseGround(scene, renderer);
 
+// Rigid-body physics (objects fall, rest on the ground and collide). Off by
+// default; toggled from the navbar. See setPhysicsEnabled below.
+const physics = createPhysics(ground.position.y);
+
 let reflector = null;
 let seaObj = null; // {mesh, setTime, resize}
 let mathObj = null;
 let currentGroundStyle = 'Flat';
 let roomObj = null; // {mesh, dispose}
 let funnelObj = null; // {mesh, dispose}
+let graniteObj = null; // {mesh, dispose}
 // Saved states for reflection toggling
 let _savedMaxDistance = null;
 let _savedCameraFar = null;
@@ -350,6 +475,7 @@ function addObjectFromPreset(preset){
   setActive(id);
   rebuild();
   refreshObjectsList();
+  try { if (params.physics && typeof syncPhysicsBodies === 'function') syncPhysicsBodies(); } catch(e) {}
 }
 
 function ensureInitialObject(){
@@ -405,6 +531,7 @@ function refreshObjectsList(){
       objects = objects.filter(x => x.id !== o.id);
       if (activeId === o.id){ activeId = objects[0]?.id ?? null; setActive(activeId); }
       refreshObjectsList(); updateStats();
+      try { if (params.physics && typeof syncPhysicsBodies === 'function') syncPhysicsBodies(); } catch(e) {}
     };
     row.appendChild(btn); row.appendChild(del);
     el.appendChild(row);
@@ -421,6 +548,10 @@ params.rotZ = 0.0;
 
 
 let knotMesh = null;
+// One-time initial-framing lift: raise the first-loaded object ~15% of its own
+// height so it sits a bit higher on the opening screen. Applied once and only
+// when the object has no saved (non-zero) vertical offset.
+let initialLiftApplied = false;
 let wireframeMesh = null;
 let knotGeometry = null;
 let knotMaterial = null;
@@ -664,8 +795,14 @@ if (!params.gizmoMode) params.gizmoMode = 'translate';
 const transformControls = new TransformControls(camera, renderer.domElement);
 transformControls.setSize(0.85);
 transformControls.setMode(params.gizmoMode);
+// While physics runs and the user grabs the gizmo, the held mesh's body is
+// pinned to the gizmo so it can be moved/rotated (see physics.step).
+let physicsHeldMesh = null;
 // Don't orbit the camera while dragging a gizmo handle.
-transformControls.addEventListener('dragging-changed', (e) => { controls.enabled = !e.value; });
+transformControls.addEventListener('dragging-changed', (e) => {
+  controls.enabled = !e.value;
+  physicsHeldMesh = (e.value && params.physics) ? knotMesh : null;
+});
 // Mirror gizmo edits back into params (world units / degrees) so the GUI,
 // the object record and later rebuilds stay in sync. The wireframe is a child
 // of the mesh, so it follows automatically.
@@ -711,9 +848,173 @@ window.addEventListener('keydown', (e) => {
 
 // GUI toggles for the gizmo (in the 6-axis folder)
 try {
-  sixFolder.add(params, 'showGizmo').name('Transform Gizmo').onChange(() => { attachGizmo(); saveParamsToActive(); });
-  sixFolder.add(params, 'gizmoMode', ['translate', 'rotate']).name('Gizmo Mode').onChange((v) => setGizmoMode(v));
+  sixFolder.add(params, 'showGizmo').name('Transform Gizmo').onChange(() => { attachGizmo(); refreshGizmoNav(); saveParamsToActive(); });
+  sixFolder.add(params, 'gizmoMode', ['translate', 'rotate']).name('Gizmo Mode').onChange((v) => { setGizmoMode(v); refreshGizmoNav(); });
 } catch(e) {}
+
+// --- Gizmo control in the navbar (mode + on/off) ---
+const GZ_ICON = {
+  move: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M2 12h20M12 2 9 5M12 2l3 3M12 22l-3-3M12 22l3-3M2 12l3-3M2 12l3 3M22 12l-3-3M22 12l-3 3"/></svg>',
+  rotate: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v4h-4"/></svg>',
+  toggle: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/><circle cx="12" cy="12" r="2.5"/></svg>'
+};
+// Gizmo controls live in the Object (Nesne) panel, next to the object's
+// transform controls, rather than on the navbar.
+const gizmoNav = document.createElement('div');
+gizmoNav.style.cssText = 'display:flex; flex-direction:column; gap:6px; margin-bottom:10px;';
+const gizmoLabel = document.createElement('div');
+gizmoLabel.textContent = getUILabel('gizmo', getCurrentLanguage());
+gizmoLabel.style.cssText = 'font-size:11px; text-transform:uppercase; letter-spacing:0.5px; opacity:0.7;';
+const gizmoRow = document.createElement('div');
+gizmoRow.style.cssText = 'display:flex; gap:6px; flex-wrap:wrap;';
+function gzBtn(icon, label, title){
+  const b = document.createElement('button');
+  b.innerHTML = `${icon}<span>${label}</span>`;
+  b.title = title;
+  b.style.cssText = 'flex:1 1 auto; display:inline-flex; align-items:center; justify-content:center; gap:5px; padding:6px 10px; border:none; border-radius:6px; background:rgba(60,60,70,0.9); color:#fff; font:600 11px var(--tc-font, system-ui); cursor:pointer;';
+  return b;
+}
+const _lang0 = getCurrentLanguage();
+const gzToggle = gzBtn(GZ_ICON.toggle, getUILabel('gizmo', _lang0), 'Gizmo aç/kapa');
+const gzMove = gzBtn(GZ_ICON.move, getUILabel('move', _lang0), 'Öteleme modu (G)');
+const gzRot  = gzBtn(GZ_ICON.rotate, getUILabel('rotate', _lang0), 'Rotasyon modu (R)');
+function refreshGizmoNav(){
+  const on = !!params.showGizmo;
+  gzToggle.style.background = on ? 'rgba(35,120,200,0.9)' : 'rgba(60,60,70,0.9)';
+  gzMove.style.background = (on && params.gizmoMode === 'translate') ? 'rgba(35,120,200,0.9)' : 'rgba(60,60,70,0.9)';
+  gzRot.style.background  = (on && params.gizmoMode === 'rotate') ? 'rgba(35,120,200,0.9)' : 'rgba(60,60,70,0.9)';
+  gzMove.style.opacity = on ? '1' : '0.5';
+  gzRot.style.opacity  = on ? '1' : '0.5';
+}
+gzToggle.onclick = () => { params.showGizmo = !params.showGizmo; attachGizmo(); refreshGizmoNav(); saveParamsToActive(); };
+gzMove.onclick = () => { params.showGizmo = true; setGizmoMode('translate'); attachGizmo(); refreshGizmoNav(); };
+gzRot.onclick  = () => { params.showGizmo = true; setGizmoMode('rotate'); attachGizmo(); refreshGizmoNav(); };
+gizmoRow.appendChild(gzToggle);
+gizmoRow.appendChild(gzMove);
+gizmoRow.appendChild(gzRot);
+const gizmoHint = document.createElement('div');
+gizmoHint.textContent = getUILabel('gizmoHint', getCurrentLanguage());
+gizmoHint.style.cssText = 'font-size:11px; opacity:0.7; line-height:1.35;';
+gizmoNav.appendChild(gizmoLabel);
+gizmoNav.appendChild(gizmoRow);
+gizmoNav.appendChild(gizmoHint);
+// gizmoNav is embedded into the on-screen touch-gizmo panel (see setupTouchGizmo).
+refreshGizmoNav();
+
+// --- Physics: rigid bodies fall, rest on the ground and collide ---
+params.physics = false;
+
+// Build a compound collider that hugs the tube: average each cross-section
+// ring of the (centered) geometry to get the centerline, then place a small
+// sphere (tube radius) at each. Objects then collide tube-to-tube instead of
+// via one big enclosing sphere, so parts actually touch with no gap.
+function colliderSpecFor(o){
+  const geo = (o.mesh && o.mesh.geometry) || o.geometry;
+  const fallback = { radius: (geo && geo.boundingSphere && geo.boundingSphere.radius) || 1 };
+  if (!geo || !geo.attributes || !geo.attributes.position) return fallback;
+  const pos = geo.attributes.position;
+  const isFoil = o.params && o.params.objectType === 'BaskınFoil';
+  const ringSize = isFoil ? 2 : (((o.params && o.params.vSegments) || 32) + 1);
+  const rings = Math.floor(pos.count / ringSize);
+  if (rings < 3) return fallback;
+  const r = Math.max(0.12, (o.params && o.params.tubeRadius) || 0.2);
+  const maxRings = 48;
+  const step = Math.max(1, Math.floor(rings / maxRings));
+  const spheres = [];
+  for (let ri = 0; ri < rings; ri += step){
+    let cx = 0, cy = 0, cz = 0;
+    for (let j = 0; j < ringSize; j++){
+      const idx = ri * ringSize + j;
+      cx += pos.getX(idx); cy += pos.getY(idx); cz += pos.getZ(idx);
+    }
+    spheres.push({ x: cx / ringSize, y: cy / ringSize, z: cz / ringSize, r });
+  }
+  return spheres.length ? { spheres } : fallback;
+}
+
+function syncPhysicsBodies(){
+  physics.clear();
+  objects.forEach(o => {
+    if (!o.mesh) return;
+    physics.addBody(o.mesh, colliderSpecFor(o));
+  });
+}
+
+function setPhysicsEnabled(on){
+  params.physics = !!on;
+  if (params.physics){
+    physics.setGroundY(ground.position.y);
+    syncPhysicsBodies();
+    // A gentle nudge so bodies clearly come alive and interact.
+    physics.links.forEach(l => {
+      l.body.velocity.set((Math.random() - 0.5) * 1.6, 0, (Math.random() - 0.5) * 1.6);
+      l.body.wakeUp();
+    });
+    // Keep the gizmo available so the selected object can be grabbed and
+    // moved/rotated while physics is running (its body is pinned during drag).
+    try { attachGizmo(); } catch(e) {}
+  } else {
+    physicsHeldMesh = null;
+    physics.clear();
+    // Write where things landed back into the object records / params.
+    objects.forEach(o => {
+      const m = o.mesh; if (!m) return;
+      o.params = o.params || {};
+      o.params.posX = +m.position.x.toFixed(3);
+      o.params.posY = +m.position.y.toFixed(3);
+      o.params.posZ = +m.position.z.toFixed(3);
+      o.params.rotX = +THREE.MathUtils.radToDeg(m.rotation.x).toFixed(2);
+      o.params.rotY = +THREE.MathUtils.radToDeg(m.rotation.y).toFixed(2);
+      o.params.rotZ = +THREE.MathUtils.radToDeg(m.rotation.z).toFixed(2);
+    });
+    const rec = getActiveRecord && getActiveRecord();
+    if (rec && rec.params){
+      params.posX = rec.params.posX; params.posY = rec.params.posY; params.posZ = rec.params.posZ;
+      params.rotX = rec.params.rotX; params.rotY = rec.params.rotY; params.rotZ = rec.params.rotZ;
+      try { gui.updateDisplay(); } catch(e) {}
+    }
+    if (params.showGizmo) { try { attachGizmo(); } catch(e) {} }
+  }
+  refreshPhysicsNav();
+}
+
+// Navbar "Fizik" toggle
+const PHYS_ICON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><ellipse cx="12" cy="12" rx="10" ry="4.5"/><ellipse cx="12" cy="12" rx="10" ry="4.5" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.5" transform="rotate(120 12 12)"/></svg>';
+const physNav = document.createElement('div');
+physNav.style.cssText = 'display:flex; align-items:center; gap:3px; margin-left:6px; flex-shrink:0;';
+const physBtn = document.createElement('button');
+physBtn.innerHTML = `${PHYS_ICON}<span>${getUILabel('physics', getCurrentLanguage())}</span>`;
+physBtn.title = 'Fizik motoru: nesneler düşer ve çarpışır (aç/kapa)';
+physBtn.style.cssText = 'display:inline-flex; align-items:center; gap:5px; padding:5px 9px; border:none; border-radius:6px; background:rgba(60,60,70,0.9); color:#fff; font:600 11px var(--tc-font, system-ui); cursor:pointer;';
+function refreshPhysicsNav(){
+  physBtn.style.background = params.physics ? 'rgba(35,120,200,0.9)' : 'rgba(60,60,70,0.9)';
+}
+physBtn.onclick = () => setPhysicsEnabled(!params.physics);
+physNav.appendChild(physBtn);
+navBar.appendChild(physNav);
+refreshPhysicsNav();
+
+// Re-label every mainapp-owned button/label when the UI language changes, so
+// all on-screen controls follow the selected language (not just the navbar tabs).
+function relabelUI(lang){
+  const setSpan = (btn, txt) => { if (!btn) return; const s = btn.querySelector('span'); if (s) s.textContent = txt; else btn.textContent = txt; };
+  setSpan(gzToggle, getUILabel('gizmo', lang));
+  setSpan(gzMove, getUILabel('move', lang));
+  setSpan(gzRot, getUILabel('rotate', lang));
+  setSpan(physBtn, getUILabel('physics', lang));
+  if (gizmoLabel) gizmoLabel.textContent = getUILabel('gizmo', lang);
+  if (gizmoHint) gizmoHint.textContent = getUILabel('gizmoHint', lang);
+  if (statsTitle) statsTitle.textContent = getUILabel('stats', lang);
+  const objHandleEl = document.querySelector('.tc-obj-handle');
+  if (objHandleEl) objHandleEl.textContent = '⇕ ' + getUILabel('objectDrag', lang);
+  // Touch-gizmo Hide/Show toggle (built in setupTouchGizmo).
+  const tgToggle = document.querySelector('.tc-gizmo-toggle');
+  if (tgToggle){
+    const vis = tgToggle.dataset.visible !== '0';
+    tgToggle.textContent = getUILabel('gizmo', lang) + ' ' + getUILabel(vis ? 'hide' : 'show', lang);
+  }
+}
+if (onLanguageChange) onLanguageChange(relabelUI);
 
 function createMaterial(){
   const mat = new THREE.MeshPhysicalMaterial({
@@ -851,9 +1152,17 @@ function rebuild(){
   // Keep camera fixed across rebuilds; just aim light
   if (knotGeometry && knotGeometry.boundingSphere){
     const radius = knotGeometry.boundingSphere.radius;
-    const upOffset = radius * 2.0 * 0.3; // raise object above ground proportionally
-    // Optionally, you can add upOffset to py if you want to keep the object above ground
-    // knotMesh.position.y += upOffset;
+    // On first load, lift the object 15% of its own height so it sits a little
+    // higher in frame. One-time only, and skipped if the object already carries
+    // a saved vertical offset (respects the user's own transform).
+    const savedPosY = rec && rec.params ? rec.params.posY : undefined;
+    if (!initialLiftApplied && (savedPosY === undefined || savedPosY === 0)){
+      const lift = radius * 2.0 * 0.15;
+      knotMesh.position.y += lift;
+      params.posY = +knotMesh.position.y.toFixed(3);
+      if (rec && rec.params) rec.params.posY = params.posY;
+      initialLiftApplied = true;
+    }
     spot.target.position.copy(knotMesh.position);
   }
 
@@ -883,6 +1192,8 @@ function rebuild(){
   }
   // rebuild replaced knotMesh — re-point the transform gizmo at it.
   try { if (typeof attachGizmo === 'function') attachGizmo(); } catch(e) {}
+  // rebuild replaced the mesh — rebuild its physics body too if physics is on.
+  try { if (params.physics && typeof syncPhysicsBodies === 'function') syncPhysicsBodies(); } catch(e) {}
 }
 
 function applyTransform(){
@@ -984,6 +1295,7 @@ function setGroundStyle(style){
   }
   if (roomObj){ scene.remove(roomObj.mesh); roomObj.dispose?.(); roomObj = null; }
   if (funnelObj){ scene.remove(funnelObj.mesh); funnelObj.dispose?.(); funnelObj = null; }
+  if (graniteObj){ scene.remove(graniteObj.mesh); graniteObj.dispose?.(); graniteObj = null; }
   if (reflector) { reflector.visible = false; }
   ground.visible = false;
   // Shadow-catcher off by default; enabled only for surfaces that can't
@@ -1000,16 +1312,22 @@ function setGroundStyle(style){
     }
   } else if (style === 'Sea'){
     seaObj = makeSea(ground.position.y);
-    // enlarge sea coverage to feel like an infinite plane
-    seaObj.mesh.scale.set(8,8,8);
     scene.add(seaObj.mesh);
-    // The sea uses a raw-GLSL ShaderMaterial that cannot receive shadows, so
-    // catch the object's shadow on a coplanar invisible plane at sea level.
+    // THREE.Water is reflective and doesn't receive standard shadows, so catch
+    // the object's shadow on a coplanar invisible plane at sea level.
     if (shadowCatcher) {
       shadowCatcher.position.y = seaObj.mesh.position.y + 0.02;
       shadowCatcher.visible = true;
     }
     ground.visible = false;
+  } else if (style === 'Granite'){
+    graniteObj = makeGranite(ground.position.y, renderer);
+    scene.add(graniteObj.mesh);
+    graniteObj.mesh.receiveShadow = true;
+    // Polished granite: blend a reflection over the stone via the Reflector.
+    ground.visible = false;
+    params.reflectorOpacity = 0.55;
+    toggleReflection(true);
   } else if (style === 'Math'){
     mathObj = makeMath(ground.position.y);
     scene.add(mathObj.mesh);
@@ -1021,12 +1339,10 @@ function setGroundStyle(style){
   } else if (style === 'Room'){
     roomObj = makeRoom(ground.position.y);
     scene.add(roomObj.mesh);
-    // Keep the flat ground in the room and project shadow onto it
-    ground.visible = true;
-    if (shadowReceiver) {
-      shadowReceiver.visible = true;
-      if (!scene.children.includes(shadowReceiver)) scene.add(shadowReceiver);
-    }
+    // Hide the checkerboard: the room provides its own floor (avoids z-fighting
+    // and the 60-unit checker poking out past the 50-unit room walls). The
+    // room's floor receives the shadow.
+    ground.visible = false;
   } else if (style === 'Funnel'){
     funnelObj = makeFunnel(ground.position.y);
     scene.add(funnelObj.mesh);
@@ -1139,16 +1455,24 @@ function updateSelectBounce(){
   }
 }
 
+let _lastFrameMs = performance.now();
 function animate(){
   requestAnimationFrame(animate);
   const now = performance.now() * 0.001;
-  // optional auto-rotate the knot object (local rotation)
-  if (params.autoRotate && knotMesh){
-    knotMesh.rotation.y += params.rotationSpeed * 0.01;
-  }
+  const _dt = Math.min(0.05, (performance.now() - _lastFrameMs) / 1000);
+  _lastFrameMs = performance.now();
 
-  // selection bounce / click feedback
-  updateSelectBounce();
+  // Physics drives object transforms while enabled (skip manual anim then).
+  if (params.physics){
+    physics.step(_dt, physicsHeldMesh);
+  } else {
+    // optional auto-rotate the knot object (local rotation)
+    if (params.autoRotate && knotMesh){
+      knotMesh.rotation.y += params.rotationSpeed * 0.01;
+    }
+    // selection bounce / click feedback
+    updateSelectBounce();
+  }
 
   controls.update();
 
@@ -1230,7 +1554,8 @@ renderer.domElement.addEventListener('pointerdown', (event) => {
     if (rec) {
       setActive(rec.id);
       // Short bounce + color flash so the click is clearly felt.
-      playSelectFeedback(mesh);
+      // Skip while physics runs — it would fight the simulated position.
+      if (!params.physics) playSelectFeedback(mesh);
     }
   }
 });
@@ -1312,4 +1637,19 @@ window.addEventListener('pointerdown', (e) => {
 
 // --- Touch 6-axis Transform Gizmo (Mobile/Tablet) ---
 // Initialized from external module
-setupTouchGizmo(params, saveParamsToActive, applyTransform, gui);
+setupTouchGizmo(params, saveParamsToActive, applyTransform, gui, {
+  modeButtons: gizmoNav,
+  // While the on-screen gizmo moves the active object, grab it in the physics
+  // sim so it collides with the others (and doesn't fall) until released.
+  onTransformStart: () => {
+    if (params.physics && knotMesh){
+      // Continue from where the object physically is (params may be stale).
+      params.posX = knotMesh.position.x; params.posY = knotMesh.position.y; params.posZ = knotMesh.position.z;
+      params.rotX = THREE.MathUtils.radToDeg(knotMesh.rotation.x);
+      params.rotY = THREE.MathUtils.radToDeg(knotMesh.rotation.y);
+      params.rotZ = THREE.MathUtils.radToDeg(knotMesh.rotation.z);
+      physicsHeldMesh = knotMesh;
+    }
+  },
+  onTransformEnd: () => { physicsHeldMesh = null; }
+});
