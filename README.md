@@ -13,6 +13,10 @@ Bunlara ek olarak bilinen sorunları var. Render işi ok parametreli biliyorsunu
 
 ![alt text](image-1.png)
 
+ClearWater ortam eklendi
+
+![alt text](image-3.png)
+
 
 A small Vite + Three.js demo that renders a parametric trefoil-like knot with interactive controls.
 
