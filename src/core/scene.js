@@ -1,7 +1,10 @@
 import * as THREE from 'three';
 
 export function createRendererAndScene(container){
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  // alpha:true lets the canvas become transparent (clear alpha 0) so a full-
+  // screen background environment (e.g. Clearwater water) can show behind the
+  // 3D object. Opaque environments still set an explicit background.
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.shadowMap.enabled = true;
