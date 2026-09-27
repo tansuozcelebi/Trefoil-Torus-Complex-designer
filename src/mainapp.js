@@ -1725,10 +1725,11 @@ window.showControlsGUI = function() {
   }
   gui.domElement.style.display = 'block';
 };
-// Show GUI in Object panel by default if Object tab is open
-if (panels['Object'].style.display === 'block') {
-  window.showControlsGUI();
-}
+// Move the dat.GUI into the Object panel on first load. ensureInitialObject()
+// ran before window.showControlsGUI was defined, so the initial move never
+// happened and the panel appeared empty until an object was re-selected — do it
+// now. The panel's own visibility governs whether it shows.
+window.showControlsGUI();
 // Apply the current language to the freshly-built dat.GUI rows.
 try { translateGuiRows(getCurrentLanguage()); } catch(e) {}
 
