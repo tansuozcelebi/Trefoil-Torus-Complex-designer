@@ -393,7 +393,7 @@ function enterClearwater(){
     }
     catch(e){ console.error('Clearwater init failed', e); clearwater = null; }
   }
-  if (clearwater) clearwater.start();
+  if (clearwater) { clearwater.start(); clearwater.setExternalDrive(true); }
   // Make the 3D canvas transparent so the water shows behind the object.
   scene.background = null;
   renderer.setClearColor(0x000000, 0);
@@ -1035,9 +1035,10 @@ function updateTerrainCollider(){
   }
 }
 
-// Clearwater has a deep water column: objects sink through the surface and
-// collide with the seabed 50 units below, so they end up inside the water.
-const CLEARWATER_DEPTH = 50;
+// Clearwater has a shallow water column: objects sink through the surface a
+// little and collide with the seabed a few units below, so they enter the water
+// without dropping out of view.
+const CLEARWATER_DEPTH = 6;
 function updatePhysicsGroundY(){
   const surfaceY = ground.position.y;
   const floorY = (currentGroundStyle === 'Clearwater') ? surfaceY - CLEARWATER_DEPTH : surfaceY;
@@ -1641,6 +1642,8 @@ function animate(){
         m.userData.__cwPrevY = m.position.y;
       }
     }
+    // Render the water from the exact same camera state as the object this frame.
+    try { clearwater.tick(performance.now()); } catch(e){}
   }
 
   // animate sea wave
