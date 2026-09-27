@@ -1035,10 +1035,19 @@ function updateTerrainCollider(){
   }
 }
 
+// Clearwater has a deep water column: objects sink through the surface and
+// collide with the seabed 50 units below, so they end up inside the water.
+const CLEARWATER_DEPTH = 50;
+function updatePhysicsGroundY(){
+  const surfaceY = ground.position.y;
+  const floorY = (currentGroundStyle === 'Clearwater') ? surfaceY - CLEARWATER_DEPTH : surfaceY;
+  physics.setGroundY(floorY);
+}
+
 function setPhysicsEnabled(on){
   params.physics = !!on;
   if (params.physics){
-    physics.setGroundY(ground.position.y);
+    updatePhysicsGroundY();
     syncPhysicsBodies();
     updateTerrainCollider();
     // A gentle nudge so bodies clearly come alive and interact.
@@ -1476,8 +1485,10 @@ function setGroundStyle(style){
   }
 
   // If physics is running, refresh the terrain collider for the new surface so
-  // objects collide with the mathematical surface (and revert to flat otherwise).
+  // objects collide with the mathematical surface (and revert to flat otherwise),
+  // and update the collision floor depth (Clearwater sinks 50 units).
   if (typeof updateTerrainCollider === 'function') updateTerrainCollider();
+  if (params.physics && typeof updatePhysicsGroundY === 'function') updatePhysicsGroundY();
 }
 
 
@@ -1618,6 +1629,18 @@ function animate(){
       pitch: Math.asin(Math.max(-1, Math.min(1, dy))),
       vfov: THREE.MathUtils.degToRad(camera.fov)
     });
+    // Splash ripple when a physics object sinks through the water surface.
+    if (params.physics){
+      const surfaceY = ground.position.y;
+      for (const l of physics.links){
+        const m = l.mesh; if (!m) continue;
+        const prevY = m.userData.__cwPrevY;
+        if (prevY !== undefined && prevY > surfaceY && m.position.y <= surfaceY){
+          clearwater.dropAt(m.position.x, m.position.z, 0.04, 0.18);
+        }
+        m.userData.__cwPrevY = m.position.y;
+      }
+    }
   }
 
   // animate sea wave
@@ -1704,10 +1727,13 @@ renderer.domElement.addEventListener('pointerdown', (event) => {
     const mesh = intersects[0].object;
     const rec = objects.find(o => o.mesh === mesh);
     if (rec) {
+      // Only bounce when a *different* object becomes selected — clicking the
+      // already-active object again should not replay the effect.
+      const isNewSelection = rec.id !== activeId;
       setActive(rec.id);
       // Short bounce + color flash so the click is clearly felt.
       // Skip while physics runs — it would fight the simulated position.
-      if (!params.physics) playSelectFeedback(mesh);
+      if (isNewSelection && !params.physics) playSelectFeedback(mesh);
     }
   }
 });
