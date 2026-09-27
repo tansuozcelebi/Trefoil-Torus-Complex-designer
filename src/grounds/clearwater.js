@@ -14,6 +14,9 @@ export function createClearwater(canvasEl, opts = {}){
   // When true, an external controller (the 3D scene's OrbitControls) drives the
   // camera, so the internal idle motion and drag-inertia are disabled.
   let _extCam = false;
+  // When true, the 3D scene's render loop drives each water frame (via tick()),
+  // so the water and the object render from the same camera state (no orbit lag).
+  let _extDrive = false;
 
 /* [adapted: removed] */
 /* [adapted: removed] */
@@ -843,7 +846,7 @@ function frame(now){
   tSim += dt;
   const t = FIXED_T!==null ? FIXED_T : tSim;
   if (!drag && !_extCam){ cam.yaw += cam.vy*0.9; cam.pitch += cam.vp*0.9; cam.vy*=0.9; cam.vp*=0.9; cam.pitch = Math.max(-1.45, Math.min(0.35, cam.pitch)); }
-  if (!pebReady){ _raf = requestAnimationFrame(frame); return; }
+  if (!pebReady){ if (!_extDrive) _raf = requestAnimationFrame(frame); return; }
   const B = camBasis(t);
 
   runFFT(t*0.9);
@@ -881,7 +884,7 @@ function frame(now){
     if (DEBUG && frames%15===0) $dbg.textContent = `${(1000/ftAvg).toFixed(0)} fps · ${W}×${H} · q ${quality.toFixed(2)}`;
   }
   if (FIXED_T!==null){ window.__frames = (window.__frames||0)+1; if (window.__frames < (Q.has('frames')? +Q.get('frames') : 4)) _raf = requestAnimationFrame(frame); return; }
-  _raf = requestAnimationFrame(frame);
+  if (!_extDrive) _raf = requestAnimationFrame(frame);
 }
 /* [adapted: loop kick-off moved into start()] */
 
@@ -893,7 +896,25 @@ function frame(now){
     last = performance.now();
     _resizeHandler = () => { if (_running) alloc(); };
     window.addEventListener('resize', _resizeHandler);
-    _raf = requestAnimationFrame(frame);
+    if (!_extDrive) _raf = requestAnimationFrame(frame);
+  }
+  // Render exactly one frame on demand (used when the 3D scene's loop drives the
+  // water, so both are rendered from the same camera state each frame).
+  function tick(now){
+    if (!_running) return;
+    frame(now === undefined ? performance.now() : now);
+  }
+  // Switch between the internal rAF loop and external (per-frame tick) driving.
+  function setExternalDrive(on){
+    on = !!on;
+    if (on === _extDrive) return;
+    _extDrive = on;
+    if (on){
+      if (_raf) { cancelAnimationFrame(_raf); _raf = 0; }
+    } else if (_running){
+      last = performance.now();
+      _raf = requestAnimationFrame(frame);
+    }
   }
   function stop(){
     _running = false;
@@ -929,5 +950,5 @@ function frame(now){
     return true;
   }
 
-  return { start, stop, resize, dispose, setCamera, dropAt, get running(){ return _running; } };
+  return { start, stop, resize, dispose, setCamera, dropAt, tick, setExternalDrive, get running(){ return _running; } };
 }
