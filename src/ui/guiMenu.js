@@ -3,7 +3,9 @@
 import { GUI } from 'dat.gui';
 
 export function setupGUI(params, rebuild, updateMaterial, toggleReflection, toggleWireframe, applyTransform, knotMaterial, wireframeMesh, spot, ambient, reflector, saveParams, toggleUCSGizmo) {
-  const gui = new GUI({ width: 320 });
+  // autoPlace:false: don't let dat.GUI mount itself at the top-right of the page.
+  // The app appends gui.domElement into the Object panel (see showControlsGUI).
+  const gui = new GUI({ width: 320, autoPlace: false });
 
   // Geometry folder
   const geomFolder = gui.addFolder('Geometry');
