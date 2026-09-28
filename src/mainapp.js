@@ -8,7 +8,7 @@ import { tabs as TabsConfig } from './ui/tabs.ts';
 import { setupGUI } from './ui/guiMenu.js';
 import { setupScenePanel } from './ui/scenePanel.js';
 import { setupTouchGizmo } from './ui/touchGizmo.js';
-import { getHelpHtml, getCurrentLanguage, setLanguage, languages, getTabLabel, getUILabel, getGuiLabel } from './ui/help.js';
+import { getHelpHtml, getCurrentLanguage, setLanguage, languages, getTabLabel, getUILabel, getGuiLabel, getStatsLabel } from './ui/help.js';
 import { getAboutHtml } from './ui/about.js';
 import { setupExportPanel } from './ui/exportMenu.js';
 import { setupNavbar } from './ui/navbar.js';
@@ -217,8 +217,26 @@ statsBody.style.cssText = 'padding: 8px 10px;';
 // Active object info (comes from setupNavbar). Restyled for the panel.
 activeInfo.style.cssText = `color:#3fa7ff; font-size:12px; margin-bottom:6px; min-height:14px; word-break:break-word; line-height:1.3;`;
 const statsMetrics = document.createElement('div');
+// FPS readout + live sparkline graph.
+const fpsRow = document.createElement('div');
+fpsRow.style.cssText = 'display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin-top:7px; padding-top:6px; border-top:1px solid rgba(255,255,255,0.12);';
+const fpsLabel = document.createElement('span');
+fpsLabel.style.cssText = 'font-size:11px; letter-spacing:0.4px; opacity:0.8;';
+const fpsValue = document.createElement('span');
+fpsValue.style.cssText = 'font-size:14px; font-weight:700; color:#7fe0a0;';
+fpsValue.textContent = '–';
+fpsRow.appendChild(fpsLabel);
+fpsRow.appendChild(fpsValue);
+const fpsCanvas = document.createElement('canvas');
+fpsCanvas.width = 220; fpsCanvas.height = 40;
+fpsCanvas.style.cssText = 'width:100%; height:36px; margin-top:4px; display:block; border-radius:4px; background:rgba(255,255,255,0.05);';
+const statsVersion = document.createElement('div');
+statsVersion.style.cssText = 'margin-top:6px; font-size:11px; color:#7da6cc; opacity:0.9;';
 statsBody.appendChild(activeInfo);
 statsBody.appendChild(statsMetrics);
+statsBody.appendChild(fpsRow);
+statsBody.appendChild(fpsCanvas);
+statsBody.appendChild(statsVersion);
 
 statsOverlay.appendChild(statsHeader);
 statsOverlay.appendChild(statsBody);
@@ -226,7 +244,7 @@ document.body.appendChild(statsOverlay);
 
 // Small chip to re-open the panel after it's closed.
 const statsRestore = document.createElement('button');
-statsRestore.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" style="flex:0 0 auto"><path d="M4 20V10M10 20V4M16 20v-6M22 20H2"/></svg><span>İstatistik</span>';
+statsRestore.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" style="flex:0 0 auto"><path d="M4 20V10M10 20V4M16 20v-6M22 20H2"/></svg><span class="tc-stats-restore-label">' + getUILabel('stats', getCurrentLanguage()) + '</span>';
 statsRestore.style.cssText = `position:fixed; left:12px; bottom:12px; z-index:1000; display:none; align-items:center; gap:6px; padding:6px 10px; border:none; border-radius:6px; background:rgba(0,0,0,0.6); color:#fff; font:600 11px monospace; cursor:pointer;`;
 document.body.appendChild(statsRestore);
 
@@ -293,6 +311,7 @@ statsHeader.addEventListener('pointerup', (e) => {
 
 function updateStats(){
   const fmt = (n) => (n || 0).toLocaleString();
+  const lang = getCurrentLanguage();
   // Active object counts
   let av = 0, af = 0;
   if (knotGeometry && knotGeometry.attributes && knotGeometry.attributes.position){
@@ -311,11 +330,68 @@ function updateStats(){
       count++;
     });
   } catch(e) {}
+  const L = (k) => getStatsLabel(k, lang);
+  const th = 'text-align:right; padding:3px 6px; font-weight:600; opacity:0.75; font-size:11px;';
+  const td = 'text-align:right; padding:3px 6px; font-variant-numeric:tabular-nums;';
+  const rowh = 'text-align:left; padding:3px 6px; opacity:0.85;';
   statsMetrics.innerHTML =
-    `Verts: ${fmt(av)}<br/>Faces: ${fmt(af)}`
-    + `<div style="margin-top:5px; padding-top:5px; border-top:1px solid rgba(255,255,255,0.12); color:#9fd0a0;">`
-    + `Sahne — Yüzey: ${fmt(tf)} · Köşe: ${fmt(tv)} <span style="opacity:0.7">(${count} nesne)</span></div>`
-    + `<span style="display:inline-block;margin-top:5px;font-size:11px;color:#7da6cc;opacity:0.9">${APP_VERSION}</span>`;
+    `<table style="width:100%; border-collapse:collapse; font-size:12px;">`
+    + `<thead><tr>`
+    + `<th style="${th} text-align:left;"></th>`
+    + `<th style="${th}">${L('vertices')}</th>`
+    + `<th style="${th}">${L('faces')}</th>`
+    + `</tr></thead><tbody>`
+    + `<tr><td style="${rowh} color:#9fd0ff;">${L('active')}</td><td style="${td}">${fmt(av)}</td><td style="${td}">${fmt(af)}</td></tr>`
+    + `<tr style="border-top:1px solid rgba(255,255,255,0.10);"><td style="${rowh} color:#9fd0a0;">${L('scene')} <span style="opacity:0.6">(${count} ${L('objects')})</span></td><td style="${td} color:#9fd0a0;">${fmt(tv)}</td><td style="${td} color:#9fd0a0;">${fmt(tf)}</td></tr>`
+    + `</tbody></table>`;
+  fpsLabel.textContent = L('fps');
+  statsVersion.textContent = APP_VERSION;
+}
+
+// --- Live FPS meter + sparkline (drawn into the stats panel) ---
+const _fpsHistory = [];
+let _fpsFrames = 0, _fpsLast = performance.now(), _fps = 0;
+function drawFpsGraph(){
+  const ctx = fpsCanvas.getContext('2d');
+  const w = fpsCanvas.width, h = fpsCanvas.height;
+  ctx.clearRect(0, 0, w, h);
+  if (_fpsHistory.length < 2) return;
+  const maxFps = 60;
+  const n = _fpsHistory.length;
+  const step = w / Math.max(1, (n - 1));
+  // filled area
+  ctx.beginPath();
+  ctx.moveTo(0, h);
+  for (let i = 0; i < n; i++){
+    const y = h - Math.min(1, _fpsHistory[i] / maxFps) * (h - 2) - 1;
+    ctx.lineTo(i * step, y);
+  }
+  ctx.lineTo(w, h);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(127,224,160,0.18)';
+  ctx.fill();
+  // line
+  ctx.beginPath();
+  for (let i = 0; i < n; i++){
+    const y = h - Math.min(1, _fpsHistory[i] / maxFps) * (h - 2) - 1;
+    if (i === 0) ctx.moveTo(0, y); else ctx.lineTo(i * step, y);
+  }
+  ctx.strokeStyle = '#7fe0a0';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+}
+function updateFpsMeter(){
+  _fpsFrames++;
+  const now = performance.now();
+  const dt = now - _fpsLast;
+  if (dt >= 500){
+    _fps = Math.round(_fpsFrames * 1000 / dt);
+    _fpsFrames = 0; _fpsLast = now;
+    _fpsHistory.push(_fps);
+    if (_fpsHistory.length > 80) _fpsHistory.shift();
+    fpsValue.textContent = _fps;
+    if (statsOverlay.style.display !== 'none') drawFpsGraph();
+  }
 }
 
 // top toolbar for ground style (moved into Environment panel)
@@ -480,7 +556,7 @@ let nextId = 1;
 function updateActiveHeader(rec){
   const r = rec || objects.find(o => o.id === activeId);
   if (!r){ activeInfo.textContent = ''; return; }
-  activeInfo.textContent = `Active [#${r.id}] ${r.name}${r.desc ? ' — ' + r.desc : ''}`;
+  activeInfo.textContent = `${getStatsLabel('active', getCurrentLanguage())} [#${r.id}] ${r.name}${r.desc ? ' — ' + r.desc : ''}`;
 }
 
 function getActiveRecord(){ return objects.find(o => o.id === activeId) || null; }
@@ -1111,6 +1187,14 @@ function relabelUI(lang){
   setSpan(physBtn, getUILabel('physics', lang));
   if (gizmoLabel) gizmoLabel.textContent = getUILabel('gizmo', lang);
   if (statsTitle) statsTitle.textContent = getUILabel('stats', lang);
+  // Refresh the stats panel (table headers, active line, restore chip) for the language.
+  try {
+    updateStats();
+    const rec = getActiveRecord && getActiveRecord();
+    if (rec) updateActiveHeader(rec);
+    const chip = document.querySelector('.tc-stats-restore-label');
+    if (chip) chip.textContent = getUILabel('stats', lang);
+  } catch(e) {}
   const objHandleEl = document.querySelector('.tc-obj-handle');
   if (objHandleEl) objHandleEl.textContent = '⇕ ' + getUILabel('objectDrag', lang);
   // Touch-gizmo Hide/Show toggle (built in setupTouchGizmo).
@@ -1450,7 +1534,7 @@ function setGroundStyle(style){
     scene.add(graniteObj.mesh);
     graniteObj.mesh.receiveShadow = true;
     // Polished granite: blend a reflection over the stone via the Reflector.
-    params.reflectorOpacity = 0.55;
+    params.reflectorOpacity = 0.38;
     toggleReflection(true);
     // toggleReflection re-shows the checker ground (needed for the Flat reflection
     // mode); for granite the stone IS the floor, so hide the checker again and
@@ -1598,6 +1682,7 @@ function updateSelectBounce(){
 let _lastFrameMs = performance.now();
 function animate(){
   requestAnimationFrame(animate);
+  updateFpsMeter();
   const now = performance.now() * 0.001;
   const _dt = Math.min(0.05, (performance.now() - _lastFrameMs) / 1000);
   _lastFrameMs = performance.now();

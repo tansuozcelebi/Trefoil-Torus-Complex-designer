@@ -111,6 +111,36 @@ export function getGuiLabel(label, lang = 'en') {
   return (m && m[label]) || guiTranslations.en[label] || label;
 }
 
+// Statistics-panel labels (title, table headers, row labels), translated so the
+// stats overlay follows the selected language.
+export const statsTranslations = {
+  en: { active: 'Active', vertices: 'Vertices', faces: 'Faces', scene: 'Scene', objects: 'objects', fps: 'FPS' },
+  tr: { active: 'Aktif', vertices: 'Köşe', faces: 'Yüzey', scene: 'Sahne', objects: 'nesne', fps: 'FPS' },
+  es: { active: 'Activo', vertices: 'Vértices', faces: 'Caras', scene: 'Escena', objects: 'objetos', fps: 'FPS' },
+  fr: { active: 'Actif', vertices: 'Sommets', faces: 'Faces', scene: 'Scène', objects: 'objets', fps: 'IPS' },
+  de: { active: 'Aktiv', vertices: 'Ecken', faces: 'Flächen', scene: 'Szene', objects: 'Objekte', fps: 'FPS' },
+  it: { active: 'Attivo', vertices: 'Vertici', faces: 'Facce', scene: 'Scena', objects: 'oggetti', fps: 'FPS' },
+  pt: { active: 'Ativo', vertices: 'Vértices', faces: 'Faces', scene: 'Cena', objects: 'objetos', fps: 'FPS' },
+  ru: { active: 'Активный', vertices: 'Вершины', faces: 'Грани', scene: 'Сцена', objects: 'объектов', fps: 'FPS' },
+  zh: { active: '活动', vertices: '顶点', faces: '面', scene: '场景', objects: '对象', fps: '帧率' },
+  ja: { active: 'アクティブ', vertices: '頂点', faces: '面', scene: 'シーン', objects: 'オブジェクト', fps: 'FPS' },
+  ko: { active: '활성', vertices: '정점', faces: '면', scene: '장면', objects: '객체', fps: 'FPS' },
+  ar: { active: 'نشط', vertices: 'رؤوس', faces: 'أوجه', scene: 'المشهد', objects: 'كائنات', fps: 'إطار/ث' },
+  hi: { active: 'सक्रिय', vertices: 'शीर्ष', faces: 'फलक', scene: 'दृश्य', objects: 'वस्तुएँ', fps: 'FPS' },
+  nl: { active: 'Actief', vertices: 'Hoekpunten', faces: 'Vlakken', scene: 'Scène', objects: 'objecten', fps: 'FPS' },
+  pl: { active: 'Aktywny', vertices: 'Wierzchołki', faces: 'Ściany', scene: 'Scena', objects: 'obiekty', fps: 'FPS' },
+  sv: { active: 'Aktiv', vertices: 'Hörn', faces: 'Ytor', scene: 'Scen', objects: 'objekt', fps: 'FPS' },
+  no: { active: 'Aktiv', vertices: 'Hjørner', faces: 'Flater', scene: 'Scene', objects: 'objekter', fps: 'FPS' },
+  da: { active: 'Aktiv', vertices: 'Hjørner', faces: 'Flader', scene: 'Scene', objects: 'objekter', fps: 'FPS' },
+  fi: { active: 'Aktiivinen', vertices: 'Kärjet', faces: 'Pinnat', scene: 'Kohtaus', objects: 'objektia', fps: 'FPS' },
+  el: { active: 'Ενεργό', vertices: 'Κορυφές', faces: 'Έδρες', scene: 'Σκηνή', objects: 'αντικείμενα', fps: 'FPS' }
+};
+
+export function getStatsLabel(key, lang = 'en') {
+  const m = statsTranslations[lang] || statsTranslations.en;
+  return (m && m[key]) || statsTranslations.en[key] || key;
+}
+
 const helpContent = {
   en: `<h3>Quick Help</h3>
 <p><strong>Mouse Controls:</strong></p>
