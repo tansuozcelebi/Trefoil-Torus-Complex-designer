@@ -51,14 +51,31 @@ export function createGranite(groundY, renderer){
     metalness: 0.15,
     envMapIntensity: 1.0
   });
-  const map = new THREE.TextureLoader().load(
+  // Start with the procedural speckle so the floor is never blank, then swap in
+  // the granite photo — brightened via a canvas filter so the stone reads lighter.
+  let currentMap = makeGraniteTexture(1024);
+  mat.map = currentMap;
+  new THREE.ImageLoader().load(
     graniteTextureUrl,
-    (tex) => { configureTiling(tex); tex.needsUpdate = true; mat.needsUpdate = true; },
+    (img) => {
+      try {
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth || 1024;
+        c.height = img.naturalHeight || 1024;
+        const ctx = c.getContext('2d');
+        ctx.filter = 'brightness(1.85) contrast(0.92) saturate(1.05)';
+        ctx.drawImage(img, 0, 0, c.width, c.height);
+        const tex = configureTiling(new THREE.CanvasTexture(c));
+        const old = currentMap;
+        currentMap = tex;
+        mat.map = tex;
+        mat.needsUpdate = true;
+        if (old) old.dispose();
+      } catch(e) { /* keep the procedural map */ }
+    },
     undefined,
-    () => { const f = makeGraniteTexture(1024); mat.map = f; mat.needsUpdate = true; }
+    () => { /* image failed: keep the procedural map */ }
   );
-  configureTiling(map);
-  mat.map = map;
 
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(size, size), mat);
   mesh.rotation.x = -Math.PI / 2;
@@ -67,6 +84,6 @@ export function createGranite(groundY, renderer){
 
   return {
     mesh,
-    dispose: () => { map.dispose(); mat.dispose(); mesh.geometry.dispose(); }
+    dispose: () => { if (currentMap) currentMap.dispose(); mat.dispose(); mesh.geometry.dispose(); }
   };
 }

@@ -26,13 +26,13 @@ export function setupNavbar() {
   };
   const GLOBE_SVG = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" style="flex:0 0 auto;opacity:0.85"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg>`;
 
-  // Top navigation bar
+  // Top navigation bar — left-aligned, hugs its content, never wraps (scrolls
+  // horizontally if it overflows) and collapses to a hamburger on mobile.
   const navBar = document.createElement('div');
   navBar.style.cssText = `
     position: fixed;
     top: 12px;
     left: 12px;
-    right: 12px;
     transform: none;
     z-index: 1000;
     display: flex;
@@ -84,7 +84,7 @@ export function setupNavbar() {
   const tabsContainer = document.createElement('div');
   tabsContainer.className = 'tc-navbar-tabs';
   tabsContainer.style.cssText = `
-    display: flex; align-items: center; gap: 6px; flex: 1;
+    display: flex; align-items: center; gap: 6px; flex: 0 1 auto; min-width: 0;
     flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden;
     scroll-behavior: smooth; -webkit-overflow-scrolling: touch;
   `;
@@ -247,11 +247,8 @@ export function setupNavbar() {
     panels[name] = panel;
   }
 
-  // Build tabs
+  // Build tabs (packed to the left — no spacer split)
   TabsConfig.left.forEach(addTabButton);
-  const spacer = document.createElement('div');
-  spacer.style.flex = '1';
-  tabsContainer.appendChild(spacer);
   TabsConfig.right.forEach(addTabButton);
   TabsConfig.tail.forEach(addTabButton);
 
