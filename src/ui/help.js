@@ -141,6 +141,68 @@ export function getStatsLabel(key, lang = 'en') {
   return (m && m[key]) || statsTranslations.en[key] || key;
 }
 
+// --- Shape library: GUI rows (joint weighting / surface), the "Shapes" tab and
+// the library panel UI. Values per language follow the key order below.
+const GUI_EXTRA_KEYS = ['Joint Weighting', 'Joint Weight', 'Joint Count', 'Joint Sharpness', 'Joint Offset', 'Surface', 'Surface Detail', 'Implicit Resolution', 'Domain Size'];
+const GUI_EXTRA = {
+  en: ['Joint Weighting', 'Joint Weight', 'Joint Count', 'Joint Sharpness', 'Joint Offset', 'Surface', 'Surface Detail', 'Implicit Resolution', 'Domain Size'],
+  tr: ['Eklem Ağırlıklandırma', 'Eklem Ağırlığı', 'Eklem Sayısı', 'Eklem Keskinliği', 'Eklem Kayması', 'Yüzey', 'Yüzey Detayı', 'Örtük Çözünürlük', 'Alan Boyutu'],
+  es: ['Ponderación de articulaciones', 'Peso de articulación', 'Número de articulaciones', 'Nitidez de articulación', 'Desfase de articulación', 'Superficie', 'Detalle de superficie', 'Resolución implícita', 'Tamaño del dominio'],
+  fr: ['Pondération des articulations', "Poids d'articulation", "Nombre d'articulations", "Netteté d'articulation", "Décalage d'articulation", 'Surface', 'Détail de surface', 'Résolution implicite', 'Taille du domaine'],
+  de: ['Gelenkgewichtung', 'Gelenkgewicht', 'Gelenkanzahl', 'Gelenkschärfe', 'Gelenkversatz', 'Fläche', 'Flächendetail', 'Implizite Auflösung', 'Bereichsgröße'],
+  it: ['Ponderazione giunti', 'Peso giunto', 'Numero giunti', 'Nitidezza giunto', 'Offset giunto', 'Superficie', 'Dettaglio superficie', 'Risoluzione implicita', 'Dimensione dominio'],
+  pt: ['Ponderação de juntas', 'Peso da junta', 'Número de juntas', 'Nitidez da junta', 'Deslocamento da junta', 'Superfície', 'Detalhe da superfície', 'Resolução implícita', 'Tamanho do domínio'],
+  ru: ['Вес суставов', 'Вес сустава', 'Число суставов', 'Резкость сустава', 'Смещение суставов', 'Поверхность', 'Детализация поверхности', 'Неявное разрешение', 'Размер области'],
+  zh: ['关节权重', '关节权重值', '关节数量', '关节锐度', '关节偏移', '曲面', '曲面细节', '隐式分辨率', '定义域大小'],
+  ja: ['ジョイントウェイト', 'ジョイントの重み', 'ジョイント数', 'ジョイントの鋭さ', 'ジョイントのオフセット', 'サーフェス', 'サーフェス詳細', '陰関数の解像度', '領域サイズ'],
+  ko: ['관절 가중치', '관절 가중값', '관절 개수', '관절 선명도', '관절 오프셋', '곡면', '곡면 디테일', '음함수 해상도', '영역 크기'],
+  ar: ['ترجيح المفاصل', 'وزن المفصل', 'عدد المفاصل', 'حدة المفصل', 'إزاحة المفصل', 'السطح', 'تفاصيل السطح', 'دقة الضمني', 'حجم المجال'],
+  hi: ['जोड़ भारांकन', 'जोड़ भार', 'जोड़ संख्या', 'जोड़ तीक्ष्णता', 'जोड़ ऑफ़सेट', 'सतह', 'सतह विवरण', 'अंतर्निहित रेज़ोल्यूशन', 'डोमेन आकार'],
+  nl: ['Gewrichtweging', 'Gewrichtgewicht', 'Aantal gewrichten', 'Gewrichtscherpte', 'Gewrichtverschuiving', 'Oppervlak', 'Oppervlakdetail', 'Impliciete resolutie', 'Domeingrootte'],
+  pl: ['Ważenie przegubów', 'Waga przegubu', 'Liczba przegubów', 'Ostrość przegubu', 'Przesunięcie przegubów', 'Powierzchnia', 'Szczegółowość powierzchni', 'Rozdzielczość niejawna', 'Rozmiar dziedziny'],
+  sv: ['Ledviktning', 'Ledvikt', 'Antal leder', 'Ledskärpa', 'Ledförskjutning', 'Yta', 'Ytdetalj', 'Implicit upplösning', 'Domänstorlek'],
+  no: ['Leddvekting', 'Leddvekt', 'Antall ledd', 'Leddskarphet', 'Leddforskyvning', 'Flate', 'Flatedetalj', 'Implisitt oppløsning', 'Domenestørrelse'],
+  da: ['Ledvægtning', 'Ledvægt', 'Antal led', 'Ledskarphed', 'Ledforskydning', 'Flade', 'Fladedetalje', 'Implicit opløsning', 'Domænestørrelse'],
+  fi: ['Nivelpainotus', 'Nivelen paino', 'Nivelten määrä', 'Nivelen terävyys', 'Nivelen siirtymä', 'Pinta', 'Pinnan tarkkuus', 'Implisiittinen resoluutio', 'Alueen koko'],
+  el: ['Στάθμιση αρθρώσεων', 'Βάρος άρθρωσης', 'Πλήθος αρθρώσεων', 'Οξύτητα άρθρωσης', 'Μετατόπιση αρθρώσεων', 'Επιφάνεια', 'Λεπτομέρεια επιφάνειας', 'Πεπλεγμένη ανάλυση', 'Μέγεθος πεδίου']
+};
+Object.keys(GUI_EXTRA).forEach(lang => {
+  guiTranslations[lang] = guiTranslations[lang] || {};
+  GUI_EXTRA_KEYS.forEach((k, i) => { guiTranslations[lang][k] = GUI_EXTRA[lang][i]; });
+});
+
+const SHAPES_TAB = { en: 'Shapes', tr: 'Şekiller', es: 'Formas', fr: 'Formes', de: 'Formen', it: 'Forme', pt: 'Formas', ru: 'Фигуры', zh: '形状', ja: '形状', ko: '도형', ar: 'الأشكال', hi: 'आकृतियाँ', nl: 'Vormen', pl: 'Kształty', sv: 'Former', no: 'Former', da: 'Former', fi: 'Muodot', el: 'Σχήματα' };
+Object.keys(SHAPES_TAB).forEach(lang => { if (tabTranslations[lang]) tabTranslations[lang].Shapes = SHAPES_TAB[lang]; });
+
+const SHAPE_UI_KEYS = ['library', 'functions', 'add', 'apply', 'explicit', 'implicit', 'parametric', 'hint', 'curves'];
+const SHAPE_UI = {
+  en: ['Shape Library', 'Functions', '+ Add', 'Apply to selected', 'Explicit', 'Implicit', 'Parametric', 'Click a shape to add it to the scene.', 'Knots & Curves'],
+  tr: ['Şekil Kütüphanesi', 'Fonksiyonlar', '+ Ekle', 'Seçiliye uygula', 'Açık', 'Örtük', 'Parametrik', 'Sahneye eklemek için bir şekle tıklayın.', 'Düğümler ve Eğriler'],
+  es: ['Biblioteca de formas', 'Funciones', '+ Añadir', 'Aplicar a la selección', 'Explícita', 'Implícita', 'Paramétrica', 'Haz clic en una forma para añadirla a la escena.', 'Nudos y curvas'],
+  fr: ['Bibliothèque de formes', 'Fonctions', '+ Ajouter', 'Appliquer à la sélection', 'Explicite', 'Implicite', 'Paramétrique', "Cliquez sur une forme pour l'ajouter à la scène.", 'Nœuds et courbes'],
+  de: ['Formenbibliothek', 'Funktionen', '+ Hinzufügen', 'Auf Auswahl anwenden', 'Explizit', 'Implizit', 'Parametrisch', 'Klicke auf eine Form, um sie zur Szene hinzuzufügen.', 'Knoten & Kurven'],
+  it: ['Libreria di forme', 'Funzioni', '+ Aggiungi', 'Applica alla selezione', 'Esplicita', 'Implicita', 'Parametrica', 'Fai clic su una forma per aggiungerla alla scena.', 'Nodi e curve'],
+  pt: ['Biblioteca de formas', 'Funções', '+ Adicionar', 'Aplicar à seleção', 'Explícita', 'Implícita', 'Paramétrica', 'Clique numa forma para adicioná-la à cena.', 'Nós e curvas'],
+  ru: ['Библиотека фигур', 'Функции', '+ Добавить', 'Применить к выбранному', 'Явная', 'Неявная', 'Параметрическая', 'Нажмите на фигуру, чтобы добавить её в сцену.', 'Узлы и кривые'],
+  zh: ['形状库', '函数', '+ 添加', '应用到所选', '显式', '隐式', '参数化', '点击形状将其添加到场景。', '纽结与曲线'],
+  ja: ['形状ライブラリ', '関数', '+ 追加', '選択に適用', '陽関数', '陰関数', 'パラメトリック', '形状をクリックしてシーンに追加します。', '結び目と曲線'],
+  ko: ['도형 라이브러리', '함수', '+ 추가', '선택 항목에 적용', '명시적', '음함수', '매개변수', '도형을 클릭하면 장면에 추가됩니다.', '매듭과 곡선'],
+  ar: ['مكتبة الأشكال', 'الدوال', '+ إضافة', 'تطبيق على المحدد', 'صريحة', 'ضمنية', 'بارامترية', 'انقر على شكل لإضافته إلى المشهد.', 'العقد والمنحنيات'],
+  hi: ['आकृति लाइब्रेरी', 'फ़ंक्शन', '+ जोड़ें', 'चयनित पर लागू करें', 'स्पष्ट', 'अंतर्निहित', 'पैरामीट्रिक', 'किसी आकृति को दृश्य में जोड़ने के लिए उस पर क्लिक करें।', 'गाँठें और वक्र'],
+  nl: ['Vormenbibliotheek', 'Functies', '+ Toevoegen', 'Toepassen op selectie', 'Expliciet', 'Impliciet', 'Parametrisch', 'Klik op een vorm om deze aan de scène toe te voegen.', 'Knopen & krommen'],
+  pl: ['Biblioteka kształtów', 'Funkcje', '+ Dodaj', 'Zastosuj do zaznaczonego', 'Jawna', 'Niejawna', 'Parametryczna', 'Kliknij kształt, aby dodać go do sceny.', 'Węzły i krzywe'],
+  sv: ['Formbibliotek', 'Funktioner', '+ Lägg till', 'Tillämpa på markerat', 'Explicit', 'Implicit', 'Parametrisk', 'Klicka på en form för att lägga till den i scenen.', 'Knutar & kurvor'],
+  no: ['Formbibliotek', 'Funksjoner', '+ Legg til', 'Bruk på valgt', 'Eksplisitt', 'Implisitt', 'Parametrisk', 'Klikk på en form for å legge den til i scenen.', 'Knuter og kurver'],
+  da: ['Formbibliotek', 'Funktioner', '+ Tilføj', 'Anvend på valgt', 'Eksplicit', 'Implicit', 'Parametrisk', 'Klik på en form for at tilføje den til scenen.', 'Knuder og kurver'],
+  fi: ['Muotokirjasto', 'Funktiot', '+ Lisää', 'Käytä valittuun', 'Eksplisiittinen', 'Implisiittinen', 'Parametrinen', 'Lisää muoto näkymään napsauttamalla sitä.', 'Solmut ja käyrät'],
+  el: ['Βιβλιοθήκη σχημάτων', 'Συναρτήσεις', '+ Προσθήκη', 'Εφαρμογή στο επιλεγμένο', 'Ρητή', 'Πεπλεγμένη', 'Παραμετρική', 'Κάντε κλικ σε ένα σχήμα για να το προσθέσετε στη σκηνή.', 'Κόμβοι & καμπύλες']
+};
+export function getShapeUILabel(key, lang = 'en') {
+  const i = SHAPE_UI_KEYS.indexOf(key);
+  if (i < 0) return key;
+  return (SHAPE_UI[lang] || SHAPE_UI.en)[i] || SHAPE_UI.en[i];
+}
+
 const helpContent = {
   en: `<h3>Quick Help</h3>
 <p><strong>Mouse Controls:</strong></p>

@@ -1,6 +1,7 @@
 // guiMenu.js
 // Contains the GUI menu setup for the app
 import { GUI } from 'dat.gui';
+import { OBJECT_TYPES } from '../objects/shapes.js';
 
 export function setupGUI(params, rebuild, updateMaterial, toggleReflection, toggleWireframe, applyTransform, knotMaterial, wireframeMesh, spot, ambient, reflector, saveParams, toggleUCSGizmo) {
   // autoPlace:false: don't let dat.GUI mount itself at the top-right of the page.
@@ -9,7 +10,7 @@ export function setupGUI(params, rebuild, updateMaterial, toggleReflection, togg
 
   // Geometry folder
   const geomFolder = gui.addFolder('Geometry');
-  geomFolder.add(params, 'objectType', ['Trefoil', 'Septafoil', 'BaskınFoil']).name('Object Type').onChange(() => { saveParams && saveParams(); rebuild(); });
+  geomFolder.add(params, 'objectType', OBJECT_TYPES).name('Object Type').onChange(() => { saveParams && saveParams(); rebuild(); });
   geomFolder.add(params, 'a', 0.1, 5.0, 0.01).onChange(() => { saveParams && saveParams(); rebuild(); });
   geomFolder.add(params, 'b', 0.0, 2.0, 0.01).onChange(() => { saveParams && saveParams(); rebuild(); });
   geomFolder.add(params, 'p', 1, 15, 1).onChange(() => { saveParams && saveParams(); rebuild(); });
@@ -21,6 +22,22 @@ export function setupGUI(params, rebuild, updateMaterial, toggleReflection, togg
   if (params.magnitude === undefined) params.magnitude = 1.0;
   geomFolder.add(params, 'magnitude', 0.0, 5.0, 0.01).name('Magnitude').onChange(() => { saveParams && saveParams(); rebuild(); });
   geomFolder.open();
+
+  // Joint weighting (knots/curves): bulges (+) or pinches (−) the tube at evenly
+  // spaced joints along the curve — e.g. 3 joints on a trefoil sit on its lobes.
+  const jointFolder = gui.addFolder('Joint Weighting');
+  const onShape = () => { saveParams && saveParams(); rebuild(); };
+  jointFolder.add(params, 'jointWeight', -0.85, 2.0, 0.01).name('Joint Weight').onChange(onShape);
+  jointFolder.add(params, 'jointCount', 1, 24, 1).name('Joint Count').onChange(onShape);
+  jointFolder.add(params, 'jointSharpness', 0.5, 12, 0.1).name('Joint Sharpness').onChange(onShape);
+  jointFolder.add(params, 'jointOffset', 0, 1, 0.01).name('Joint Offset').onChange(onShape);
+
+  // Surfaces (parametric / explicit / implicit / custom): mesh quality. These
+  // rebuilds are heavier, so they apply when the slider is released.
+  const surfFolder = gui.addFolder('Surface');
+  surfFolder.add(params, 'surfSegments', 16, 220, 1).name('Surface Detail').onFinishChange(onShape);
+  surfFolder.add(params, 'resolution', 16, 120, 1).name('Implicit Resolution').onFinishChange(onShape);
+  surfFolder.add(params, 'bound', 0.5, 8, 0.1).name('Domain Size').onFinishChange(onShape);
 
   // Material folder
   const matFolder = gui.addFolder('Material');

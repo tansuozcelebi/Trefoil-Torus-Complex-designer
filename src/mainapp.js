@@ -12,8 +12,8 @@ import { getHelpHtml, getCurrentLanguage, setLanguage, languages, getTabLabel, g
 import { getAboutHtml } from './ui/about.js';
 import { setupExportPanel } from './ui/exportMenu.js';
 import { setupNavbar } from './ui/navbar.js';
-import { TrefoilCurve } from './objects/trefoil.js';
-import { SeptafoilCurve } from './objects/septafoil.js';
+import { buildShapeGeometry, isSurfaceKind, getShapeKind, SHAPE_PARAM_DEFAULTS, SHAPE_PARAM_KEYS } from './objects/shapes.js';
+import { setupShapeLibrary } from './ui/shapeLibrary.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
 import { Reflector } from 'three/examples/jsm/objects/Reflector.js';
@@ -545,8 +545,18 @@ const params = {
   rotationSpeed: 0.12,
   texture: 'none',
   mathWireframeColor: '#000000',
-  showUCSGizmo: true
+  showUCSGizmo: true,
+  // shape library: joint weighting, surface quality, custom formulas
+  ...SHAPE_PARAM_DEFAULTS
 };
+
+// Copies the shape-library keys from `src` (falling back to the defaults) so
+// every object record carries its own joints / formulas / quality settings.
+function shapeParamsFrom(src){
+  const out = {};
+  SHAPE_PARAM_KEYS.forEach(k => { out[k] = (src && src[k] !== undefined) ? src[k] : SHAPE_PARAM_DEFAULTS[k]; });
+  return out;
+}
 
 // Multi-object: in-memory list and helpers
 let objects = []; // { id, name, desc, type, params, mesh, wireframe, geometry, material }
@@ -613,6 +623,7 @@ function addObjectFromPreset(preset){
       uSegments: preset.params?.uSegments ?? params.uSegments,
       vSegments: preset.params?.vSegments ?? params.vSegments,
       magnitude: preset.params?.magnitude ?? params.magnitude,
+      ...shapeParamsFrom(preset.params),
       // randomized metallic material defaults
       materialType: 'Metallic',
       metalness: 0.9,
@@ -655,6 +666,7 @@ function saveParamsToActive(){
     a: params.a, b: params.b, p: params.p, q: params.q,
     tubeRadius: params.tubeRadius, uSegments: params.uSegments, vSegments: params.vSegments,
   magnitude: params.magnitude,
+    ...shapeParamsFrom(params),
     materialType: params.materialType, metalness: params.metalness, roughness: params.roughness,
     opacity: params.opacity, ior: params.ior, useTransmission: params.useTransmission,
     fresnel: params.fresnel, materialColor: params.materialColor, wireframeColor: params.wireframeColor,
@@ -710,6 +722,8 @@ params.rotZ = 0.0;
 
 
 let knotMesh = null;
+// Message from the last failed custom-formula build (shown in the Shapes panel).
+let lastShapeError = null;
 // One-time initial-framing lift: raise the first-loaded object ~15% of its own
 // height so it sits a bit higher on the opening screen. Applied once and only
 // when the object has no saved (non-zero) vertical offset.
@@ -1071,6 +1085,19 @@ function colliderSpecFor(o){
   const fallback = { radius: (geo && geo.boundingSphere && geo.boundingSphere.radius) || 1 };
   if (!geo || !geo.attributes || !geo.attributes.position) return fallback;
   const pos = geo.attributes.position;
+  const kind = getShapeKind(o.params && o.params.objectType);
+  if (isSurfaceKind(kind)){
+    // Surfaces have no tube rings: cover the mesh with ~64 spheres sampled
+    // evenly from its vertices so it rests and collides on its actual shape.
+    const R = (geo.boundingSphere && geo.boundingSphere.radius) || 1;
+    const sr = Math.max(0.15, R * 0.11);
+    const stride = Math.max(1, Math.floor(pos.count / 64));
+    const spheres = [];
+    for (let i = 0; i < pos.count; i += stride){
+      spheres.push({ x: pos.getX(i), y: pos.getY(i), z: pos.getZ(i), r: sr });
+    }
+    return spheres.length ? { spheres } : fallback;
+  }
   const isFoil = o.params && o.params.objectType === 'BaskınFoil';
   const ringSize = isFoil ? 2 : (((o.params && o.params.vSegments) || 32) + 1);
   const rings = Math.floor(pos.count / ringSize);
@@ -1085,7 +1112,14 @@ function colliderSpecFor(o){
       const idx = ri * ringSize + j;
       cx += pos.getX(idx); cy += pos.getY(idx); cz += pos.getZ(idx);
     }
-    spheres.push({ x: cx / ringSize, y: cy / ringSize, z: cz / ringSize, r });
+    cx /= ringSize; cy /= ringSize; cz /= ringSize;
+    // joint-weighted tubes vary in thickness: use this ring's measured radius
+    let rr = r;
+    if (!isFoil && (o.params && o.params.jointWeight)){
+      const i0 = ri * ringSize;
+      rr = Math.max(0.12, Math.hypot(pos.getX(i0) - cx, pos.getY(i0) - cy, pos.getZ(i0) - cz));
+    }
+    spheres.push({ x: cx, y: cy, z: cz, r: rr });
   }
   return spheres.length ? { spheres } : fallback;
 }
@@ -1275,9 +1309,9 @@ function rebuild(){
     wireframeMesh = null;
   }
 
-  // choose curve implementation based on user selection
-  let curve;
+  // choose geometry implementation based on user selection
   let isFoil = false;
+  let shapeKind = 'ribbon';
   if (params.objectType === 'BaskınFoil') {
     isFoil = true;
     // Create variable-width ribbon along torus-like curve
@@ -1320,12 +1354,19 @@ function rebuild(){
     knotGeometry.setIndex(indices);
     knotGeometry.computeVertexNormals();
   } else {
-    if (params.objectType === 'Septafoil'){
-      curve = new SeptafoilCurve(params.a, params.b, params.p, params.q);
-    } else {
-      curve = new TrefoilCurve(params.a, params.b, params.p, params.q);
-    }
-    knotGeometry = new THREE.TubeGeometry(curve, uSeg, params.tubeRadius, params.vSegments, true);
+    // Knots/curves (tube with optional joint weighting) and all surfaces
+    // (parametric / explicit / implicit / custom formulas) come from the shape
+    // library. Lower quality on mobile, like the tube LOD above.
+    const built = buildShapeGeometry(params, {
+      uSegments: uSeg,
+      surfSegments: isMobile ? Math.min(params.surfSegments, 64) : params.surfSegments,
+      resolution: isMobile ? Math.min(params.resolution, 40) : params.resolution
+    });
+    knotGeometry = built.geometry;
+    shapeKind = built.kind;
+    lastShapeError = built.error || null;
+    if (lastShapeError) console.warn('[shape]', lastShapeError);
+    try { window.dispatchEvent(new CustomEvent('tc-shape-built', { detail: { type: params.objectType, error: lastShapeError } })); } catch(e) {}
   }
   // center geometry so the object is centered at origin
   if (knotGeometry && typeof knotGeometry.center === 'function'){
@@ -1533,14 +1574,20 @@ function setGroundStyle(style){
     graniteObj = makeGranite(ground.position.y, renderer);
     scene.add(graniteObj.mesh);
     graniteObj.mesh.receiveShadow = true;
-    // Polished granite: blend a reflection over the stone via the Reflector.
-    params.reflectorOpacity = 0.38;
+    // Polished granite: a subtle reflection blended over the stone.
+    params.reflectorOpacity = 0.22;
     toggleReflection(true);
     // toggleReflection re-shows the checker ground (needed for the Flat reflection
     // mode); for granite the stone IS the floor, so hide the checker again and
     // lift the reflector clear of the granite to avoid z-fighting/flicker.
     ground.visible = false;
-    if (reflector) reflector.position.y = ground.position.y + 0.02;
+    if (reflector){
+      reflector.position.y = ground.position.y + 0.02;
+      // toggleReflection only sets opacity when it first creates the reflector,
+      // so apply it here too (otherwise a later visit keeps the old value).
+      reflector.material.transparent = true;
+      reflector.material.opacity = params.reflectorOpacity;
+    }
   } else if (style === 'Math'){
     mathObj = makeMath(ground.position.y);
     scene.add(mathObj.mesh);
@@ -1789,6 +1836,40 @@ ensureInitialObject();
 
 // Initialize Scene panel now that all dependencies are available
 initScenePanel();
+
+// --- Shape library (Shapes tab): add knots/surfaces/custom formulas ---------
+// New parts are placed on free spots around the origin and dropped so they
+// rest on the floor instead of sinking half-way into it.
+const SHAPE_SLOTS = [[0, 0], [6, 0], [-6, 0], [0, -6], [6, -6], [-6, -6], [3, 5], [-3, 5]];
+function restActiveOnGround(){
+  if (!knotMesh || !knotGeometry) return;
+  knotGeometry.computeBoundingBox();
+  const minY = knotGeometry.boundingBox.min.y;
+  params.posY = +(ground.position.y - minY + 0.05).toFixed(3);
+  applyTransform();
+  try { gui.updateDisplay(); } catch(e) {}
+}
+function addShapeFromLibrary(type, name, desc, defaults){
+  const [sx, sz] = SHAPE_SLOTS[objects.length % SHAPE_SLOTS.length];
+  addObjectFromPreset({ name, desc, type, params: { ...defaults, posX: sx, posY: 0, posZ: sz, rotX: 0, rotY: 0, rotZ: 0 } });
+  restActiveOnGround();
+  updateStats();
+}
+setupShapeLibrary(panels['Shapes'], {
+  getLang: getCurrentLanguage,
+  getParams: () => params,
+  onLanguageChange,
+  addShape: addShapeFromLibrary,
+  applyToActive: (patch) => {
+    Object.assign(params, patch);
+    saveParamsToActive();
+    const rec = getActiveRecord();
+    if (rec) rec.type = params.objectType;
+    rebuild();
+    try { gui.updateDisplay(); } catch(e) {}
+    updateStats();
+  }
+});
 
 // Initialize Export panel
 initExportPanel();

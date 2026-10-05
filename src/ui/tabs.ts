@@ -1,5 +1,5 @@
 export const tabs = {
-  left: ['Home', 'Environment', 'Scene'],
+  left: ['Home', 'Environment', 'Scene', 'Shapes'],
   right: ['Object', 'Export'],
   tail: ['About', 'Help']
 };
