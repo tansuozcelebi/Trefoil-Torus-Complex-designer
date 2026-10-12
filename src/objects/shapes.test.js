@@ -95,3 +95,22 @@ describe('joint weighting', () => {
     expect(g.index.count).toBe(t.index.count);
   });
 });
+
+describe('KREATV', () => {
+  it('builds a centred TV with a screen layout and a compound collider', () => {
+    const { geometry, kind, error } = buildShapeGeometry({ ...base, objectType: 'KREATV' });
+    expect(error).toBeUndefined();
+    expect(kind).toBe('tv');
+    const { screen } = geometry.userData.kreatv;
+    expect(screen.w / screen.h).toBeCloseTo(16 / 9);
+    geometry.computeBoundingBox();
+    const c = geometry.boundingBox.getCenter(new THREE.Vector3());
+    expect(c.length()).toBeLessThan(1e-6);
+    // the screen sits on the front face of the cabinet
+    expect(screen.z).toBeGreaterThan(0);
+    expect(screen.z).toBeLessThan(geometry.boundingBox.max.z + 1e-6);
+    const col = geometry.userData.collider;
+    expect(col.boxes.length).toBeGreaterThan(0);
+    expect(col.spheres.length).toBeGreaterThan(0);
+  });
+});

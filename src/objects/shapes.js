@@ -4,6 +4,7 @@ import { edgeTable, triTable } from 'three/examples/jsm/objects/MarchingCubes.js
 import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { TrefoilCurve } from './trefoil.js';
 import { SeptafoilCurve } from './septafoil.js';
+import { buildKreaTvGeometry } from './kreatv.js';
 
 // Shape library: every object type the designer can build, grouped by kind.
 //   curve      — closed/open 3D curve swept into a tube (supports joint weighting)
@@ -11,6 +12,7 @@ import { SeptafoilCurve } from './septafoil.js';
 //   explicit   — height field z = f(x, y)
 //   implicit   — level set F(x, y, z) = 0 (polygonised with marching cubes)
 //   custom-*   — user formulas for the three surface kinds
+//   tv         — KREATV, a TV model whose screen plays a video (see kreatv.js)
 // Surfaces use the math convention (z up) and are mapped to three.js (y up).
 
 const TAU = Math.PI * 2;
@@ -118,7 +120,13 @@ export const CUSTOM = [
   { id: 'Custom Explicit', desc: 'z = f(x, y)' }
 ];
 
+// ---------------------------------------------------------------- models --
+export const MODELS = [
+  { id: 'KREATV', desc: 'TV — plays a video, physics-enabled' }
+];
+
 export const SHAPE_GROUPS = [
+  { key: 'models', title: 'Objects', color: '#ff9f43', items: MODELS },
   { key: 'curves', title: 'Knots & Curves', color: '#5fb3ff', items: CURVES },
   { key: 'parametric', title: 'Parametric (u,v)', color: '#ffd76a', items: PARAMETRIC },
   { key: 'implicit', title: 'Implicit (F = 0)', color: '#ff6f9c', items: IMPLICIT },
@@ -134,6 +142,7 @@ byId.set('Custom Parametric', { kind: 'custom-parametric' });
 byId.set('Custom Implicit', { kind: 'custom-implicit' });
 byId.set('Custom Explicit', { kind: 'custom-explicit' });
 byId.set('BaskınFoil', { kind: 'ribbon' });
+MODELS.forEach(d => byId.set(d.id, { kind: 'tv', def: d }));
 
 // Per-object parameters added by the shape library (joints, surface quality,
 // custom formulas). Kept in every object record so switching objects restores them.
@@ -149,13 +158,13 @@ export const SHAPE_PARAM_KEYS = Object.keys(SHAPE_PARAM_DEFAULTS);
 
 export function getShapeKind(type){ return (byId.get(type) || { kind: 'curve' }).kind; }
 export function getShapeLabel(type){ const e = byId.get(type); return (e && e.def && (e.def.name || e.def.id)) || type; }
-export function isSurfaceKind(kind){ return kind !== 'curve' && kind !== 'ribbon'; }
+export function isSurfaceKind(kind){ return kind !== 'curve' && kind !== 'ribbon' && kind !== 'tv'; }
 
 // Ordered list for the "Object Type" dropdown.
 export const OBJECT_TYPES = [
   ...CURVES.map(d => d.id), 'BaskınFoil',
   ...PARAMETRIC.map(d => d.id), ...EXPLICIT.map(d => d.id), ...IMPLICIT.map(d => d.id),
-  ...CUSTOM.map(d => d.id)
+  ...CUSTOM.map(d => d.id), ...MODELS.map(d => d.id)
 ];
 
 // ------------------------------------------------------ formula compiler --
@@ -359,6 +368,7 @@ export function buildShapeGeometry(P, opts = {}){
         : new THREE.TubeGeometry(curve, tubular, P.tubeRadius, radial, def.closed);
       return { geometry, kind };
     }
+    if (kind === 'tv') return { geometry: buildKreaTvGeometry(P), kind };
     if (kind === 'parametric') return { geometry: parametricGeometry((u, v) => entry.def.fn(u, v, P), segs), kind };
     if (kind === 'explicit'){
       const R = entry.def.R * (P.a / 2);

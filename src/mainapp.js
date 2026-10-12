@@ -14,6 +14,7 @@ import { setupExportPanel } from './ui/exportMenu.js';
 import { setupNavbar } from './ui/navbar.js';
 import { buildShapeGeometry, isSurfaceKind, getShapeKind, SHAPE_PARAM_DEFAULTS, SHAPE_PARAM_KEYS } from './objects/shapes.js';
 import { setupShapeLibrary } from './ui/shapeLibrary.js';
+import { createKreaTvLayer } from './ui/kreatvScreen.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
 import { Reflector } from 'three/examples/jsm/objects/Reflector.js';
@@ -442,6 +443,9 @@ renderer.domElement.style.position = 'fixed';
 renderer.domElement.style.inset = '0';
 renderer.domElement.style.zIndex = '1';
 
+// KREATV video layer (CSS3D iframes behind the canvas, shown through the TV screen).
+const kreaTv = createKreaTvLayer({ scene, camera, before: container });
+
 // --- Clearwater: a full-screen real-time water environment rendered by its own
 // WebGL2 pipeline on a background canvas, behind the transparent 3D canvas. ---
 let clearwater = null;         // Clearwater instance {start,stop,resize,dispose}
@@ -632,8 +636,8 @@ function addObjectFromPreset(preset){
       ior: params.ior,
       useTransmission: false,
       fresnel: params.fresnel,
-      materialColor: matColor,
-      wireframeColor: wireColor,
+      materialColor: preset.params?.materialColor ?? matColor,
+      wireframeColor: preset.params?.wireframeColor ?? wireColor,
       // view
       useWireframe: params.useWireframe,
       posX: preset.params?.posX ?? 0, 
@@ -1084,6 +1088,8 @@ function colliderSpecFor(o){
   const geo = (o.mesh && o.mesh.geometry) || o.geometry;
   const fallback = { radius: (geo && geo.boundingSphere && geo.boundingSphere.radius) || 1 };
   if (!geo || !geo.attributes || !geo.attributes.position) return fallback;
+  // Models (KREATV) carry their own box + sphere compound collider.
+  if (geo.userData && geo.userData.collider) return geo.userData.collider;
   const pos = geo.attributes.position;
   const kind = getShapeKind(o.params && o.params.objectType);
   if (isSurfaceKind(kind)){
@@ -1417,7 +1423,8 @@ function rebuild(){
 
   // wireframe overlay as child of knotMesh so centers/d transforms match exactly
   if (!isFoil) { // foil için wireframe çok karmaşık görünebilir, isteğe bağlı ileride eklenir
-    const geo2 = new THREE.WireframeGeometry(knotGeometry);
+    // Box models (KREATV) read better with just their outline edges.
+    const geo2 = shapeKind === 'tv' ? new THREE.EdgesGeometry(knotGeometry, 20) : new THREE.WireframeGeometry(knotGeometry);
     const mat2 = new THREE.LineBasicMaterial({ color: new THREE.Color(params.wireframeColor), transparent: true, opacity: 0.6 });
     wireframeMesh = new THREE.LineSegments(geo2, mat2);
     wireframeMesh.renderOrder = 1;
@@ -1428,6 +1435,8 @@ function rebuild(){
   }
 
   toggleWireframe(params.useWireframe);
+  // KREATV: add the video screen + logo to the cabinet.
+  if (shapeKind === 'tv') kreaTv.attach(knotMesh, knotGeometry.userData.kreatv);
   // update vertex/face stats
   updateStats();
 
@@ -1647,6 +1656,7 @@ function onWindowResize(){
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  kreaTv.resize(window.innerWidth, window.innerHeight);
   if (seaObj && seaObj.resize){
     seaObj.resize(window.innerWidth, window.innerHeight);
   }
@@ -1790,6 +1800,7 @@ function animate(){
   }
 
   renderer.render(scene, camera);
+  kreaTv.render();
 
   // Render UCS corner gizmo
   if (params.showUCSGizmo){
@@ -1905,6 +1916,19 @@ renderer.domElement.addEventListener('pointerdown', (event) => {
       if (isNewSelection && !params.physics) playSelectFeedback(mesh);
     }
   }
+});
+
+// Double-click a KREATV to turn its sound on/off.
+renderer.domElement.addEventListener('dblclick', (event) => {
+  const rect = renderer.domElement.getBoundingClientRect();
+  pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const meshes = objects.map(o => o.mesh).filter(Boolean);
+  const hit = raycaster.intersectObjects(meshes, true)[0];
+  let m = hit && hit.object;
+  while (m && !(m.userData && m.userData.kreatv)) m = m.parent;
+  if (m) kreaTv.toggleSound(m);
 });
 
 // expose rebuild for GUI callbacks

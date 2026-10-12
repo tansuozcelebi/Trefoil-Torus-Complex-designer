@@ -43,8 +43,9 @@ export function createPhysics(groundY){
 
   const links = []; // { mesh, body }
 
-  // spec: { spheres: [{x,y,z,r}, ...] } for a compound collider that hugs the
-  // tube, or { radius } for a single bounding sphere (fallback).
+  // spec: { spheres: [{x,y,z,r}, ...], boxes: [{x,y,z,hx,hy,hz}, ...] } for a
+  // compound collider that hugs the shape, or { radius } for a single bounding
+  // sphere (fallback).
   function addBody(mesh, spec){
     const body = new CANNON.Body({
       mass: 1,
@@ -52,8 +53,13 @@ export function createPhysics(groundY){
       linearDamping: 0.05,
       angularDamping: 0.2
     });
-    if (spec && Array.isArray(spec.spheres) && spec.spheres.length){
-      for (const s of spec.spheres){
+    const boxes = (spec && Array.isArray(spec.boxes)) ? spec.boxes : [];
+    const spheres = (spec && Array.isArray(spec.spheres)) ? spec.spheres : [];
+    if (boxes.length || spheres.length){
+      for (const b of boxes){
+        body.addShape(new CANNON.Box(new CANNON.Vec3(b.hx, b.hy, b.hz)), new CANNON.Vec3(b.x, b.y, b.z));
+      }
+      for (const s of spheres){
         body.addShape(new CANNON.Sphere(Math.max(0.08, s.r)), new CANNON.Vec3(s.x, s.y, s.z));
       }
     } else {

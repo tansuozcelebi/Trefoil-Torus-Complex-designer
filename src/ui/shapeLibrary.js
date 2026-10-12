@@ -12,7 +12,8 @@ const SHAPE_DEFAULTS = {
   Spring: { a: 1.6, b: 0.7, q: 5, tubeRadius: 0.2 },
   'Torus Ring': { tubeRadius: 0.35, jointWeight: 0.7, jointCount: 12, jointSharpness: 3 },
   Superellipsoid: { q: 1.2 },
-  'Twisted Torus': { p: 3 }
+  'Twisted Torus': { p: 3 },
+  KREATV: { materialColor: '#2b2f37', wireframeColor: '#6b7484' }
 };
 
 const OPEN_KEY = 'tc_shape_groups_open';
@@ -28,6 +29,7 @@ export function setupShapeLibrary(panel, api){
   let open = {};
   try { open = JSON.parse(localStorage.getItem(OPEN_KEY) || '{}') || {}; } catch(e) { open = {}; }
   if (Object.keys(open).length === 0) open = { curves: true };
+  if (open.models === undefined) open.models = true;
   let mode = 'implicit';
   try { mode = localStorage.getItem(MODE_KEY) || 'implicit'; } catch(e) {}
   let status = { text: '', ok: true };
@@ -46,6 +48,7 @@ export function setupShapeLibrary(panel, api){
   function el(tag, style, text){ const e = document.createElement(tag); if (style) e.style.cssText = style; if (text != null) e.textContent = text; return e; }
 
   function groupTitle(g){
+    if (g.key === 'models') return L('models');
     if (g.key === 'curves') return L('curves');
     if (g.key === 'parametric') return `${L('parametric')} (u,v)`;
     if (g.key === 'implicit') return `${L('implicit')} (F = 0)`;
