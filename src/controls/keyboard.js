@@ -2,6 +2,9 @@
 // Provides WASDQE for position and I/K/J/L/U/O/N/M for parameters
 export function setupKeyboardControls({ params, getActiveRecord, applyTransform, rebuild, saveParamsToActive, gui }){
   function onKeyDown(e){
+    // Don't move the object while typing in a text field (e.g. a formula).
+    const tag = ((e.target && e.target.tagName) || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
     const rec = typeof getActiveRecord === 'function' ? getActiveRecord() : null;
     if (!rec) return;
     let changed = false;

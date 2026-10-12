@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+# [Unreleased]
+### Added
+- **KREATV** shape (Shapes → Objects): a TV whose screen continuously plays the KREA intro video (YouTube, muted autoplay, looped). Double-click the TV to toggle sound. It is a full physics object with a box + sphere compound collider.
+- Physics bodies accept box shapes in addition to spheres.
+
+### Changed
+- Help panel rewritten in all 20 languages to match the current app: camera mouse controls, the real keyboard shortcuts (W/A/S/D/Q/E, I/K/J/L/U/O/N/M, G/R), every panel, physics, KREATV, touch and UCS tips.
+- CSP (nginx + .htaccess) allows YouTube frames (`frame-src`).
+
+### Fixed
+- Keyboard object shortcuts no longer fire while typing in a text field (e.g. a custom formula).
+
 # [1.1.4] - 2025-11-01
 ### Added
 - Comprehensive SEO optimization with meta tags, Open Graph, Twitter Cards, and JSON-LD structured data.
