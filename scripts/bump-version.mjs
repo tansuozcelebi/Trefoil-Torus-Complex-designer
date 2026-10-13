@@ -9,6 +9,11 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const pkgPath = join(root, 'package.json');
 
 const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
+// Release builds (CI deploy) ship the version exactly as committed.
+if (process.env.NO_VERSION_BUMP){
+  console.log(`[bump-version] NO_VERSION_BUMP set, keeping ${pkg.version}`);
+  process.exit(0);
+}
 const parts = String(pkg.version || '0.0.0').split('.').map((n) => parseInt(n, 10) || 0);
 while (parts.length < 3) parts.push(0);
 parts[2] += 1; // bump patch

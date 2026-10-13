@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-# [Unreleased]
+# [1.2.0] - 2026-10-13
 ### Added
 - **KREATV** shape (Shapes → Objects): a TV whose screen continuously plays the KREA intro video (YouTube, muted autoplay, looped). Double-click the TV to toggle sound. It is a full physics object with a box + sphere compound collider.
 - Physics bodies accept box shapes in addition to spheres.

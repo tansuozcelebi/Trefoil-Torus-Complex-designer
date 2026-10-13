@@ -101,19 +101,19 @@ docker compose up -d
 
 For detailed Docker instructions, see [DOCKER.md](DOCKER.md).
 
-## Release v1.0.0
+## Release v1.2.0
 
-This repository is released as version `1.0.0`.
+This repository is released as version `1.2.0`.
 
-See `CHANGELOG.md` for the initial release notes. To publish a release:
+See `CHANGELOG.md` for the release notes. To publish a release:
 
 1. Commit your changes and tag the release:
 
 ```powershell
 git add .
-git commit -m "chore(release): v1.0.0"
-git tag v1.0.0
+git commit -m "chore(release): v1.2.0"
+git tag v1.2.0
 git push && git push --tags
 ```
 
-2. Create a GitHub release from the `v1.0.0` tag and attach build artifacts if needed.
+2. Create a GitHub release from the `v1.2.0` tag and attach build artifacts if needed.

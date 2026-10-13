@@ -61,6 +61,9 @@ jobs:
       - name: Build
         if: env.SITEGROUND_FTP_HOST != ''
         run: npm run build
+        env:
+          # Deploy the version committed in package.json (no auto patch bump).
+          NO_VERSION_BUMP: '1'
 
       - name: Upload dist/ over FTPS
         if: env.SITEGROUND_FTP_HOST != ''
