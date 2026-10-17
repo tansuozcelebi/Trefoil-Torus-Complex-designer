@@ -582,6 +582,7 @@ function setActive(id){
   // sync GUI params from record
   Object.assign(params, rec.params);
   try { if (typeof gui !== 'undefined') gui.updateDisplay(); } catch(e) {}
+  try { if (typeof refreshForShape === 'function') refreshForShape(params.objectType); } catch(e) {}
   updateActiveHeader(rec);
   // mirror globals for compatibility
   knotMesh = rec.mesh || null;
@@ -903,7 +904,7 @@ renderer.domElement.addEventListener('pointermove', handleUCSPointerMove);
 renderer.domElement.addEventListener('pointerdown', handleUCSPointerDown);
 
 // Setup GUI menu (objectType at the top)
-const { gui, viewFolder, sixFolder } = setupGUI(
+const { gui, viewFolder, sixFolder, refreshForShape, setMathFolderVisible } = setupGUI(
   params,
   rebuild,
   updateMaterial,
@@ -1435,6 +1436,8 @@ function rebuild(){
   }
 
   toggleWireframe(params.useWireframe);
+  // Object panel shows only the rows this shape uses.
+  try { refreshForShape(params.objectType); } catch(e) {}
   // KREATV: add the video screen + logo to the cabinet.
   if (shapeKind === 'tv') kreaTv.attach(knotMesh, knotGeometry.userData.kreatv);
   // update vertex/face stats
@@ -1628,6 +1631,7 @@ function setGroundStyle(style){
   // If physics is running, refresh the terrain collider for the new surface so
   // objects collide with the mathematical surface (and revert to flat otherwise),
   // and update the collision floor depth (Clearwater sinks 50 units).
+  try { setMathFolderVisible(style === 'Math'); } catch(e) {}
   if (typeof updateTerrainCollider === 'function') updateTerrainCollider();
   if (params.physics && typeof updatePhysicsGroundY === 'function') updatePhysicsGroundY();
 }
@@ -1918,17 +1922,37 @@ renderer.domElement.addEventListener('pointerdown', (event) => {
   }
 });
 
-// Double-click a KREATV to turn its sound on/off.
+// Double-click:
+//  - on the corner axis gizmo (UCS): switch the transform gizmo to rotate mode
+//  - on a KREATV screen: turn its sound on/off
+//  - on any other part of an object: select it and open the Object panel
 renderer.domElement.addEventListener('dblclick', (event) => {
+  if (params.showUCSGizmo && getPointerInUCS(event)){
+    params.showGizmo = true;
+    setGizmoMode('rotate');
+    attachGizmo();
+    refreshGizmoNav();
+    return;
+  }
   const rect = renderer.domElement.getBoundingClientRect();
   pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
   pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
   raycaster.setFromCamera(pointer, camera);
   const meshes = objects.map(o => o.mesh).filter(Boolean);
   const hit = raycaster.intersectObjects(meshes, true)[0];
-  let m = hit && hit.object;
-  while (m && !(m.userData && m.userData.kreatv)) m = m.parent;
-  if (m) kreaTv.toggleSound(m);
+  if (!hit) return;
+  if (hit.object.name === 'kreatv-screen'){
+    let m = hit.object;
+    while (m && !(m.userData && m.userData.kreatv)) m = m.parent;
+    if (m) kreaTv.toggleSound(m);
+    return;
+  }
+  let root = hit.object;
+  while (root && !objects.some(o => o.mesh === root)) root = root.parent;
+  const rec = root && objects.find(o => o.mesh === root);
+  if (!rec) return;
+  if (rec.id !== activeId) setActive(rec.id);
+  showTab('Object');
 });
 
 // expose rebuild for GUI callbacks

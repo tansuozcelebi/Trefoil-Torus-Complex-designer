@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+# [Unreleased]
+### Added
+- Double-click an object to select it and open the Object panel (double-clicking a KREATV screen still toggles its sound).
+- Double-click the corner axis gizmo (UCS) to switch the transform gizmo to rotate mode.
+
+### Changed
+- The Object panel only shows the parameters the selected shape uses (e.g. a sphere shows `a` and surface detail; a knot shows `a, b, p, q`, tube settings and joint weighting; KREATV shows only its size). Glass settings (`ior`, transmission) appear only for transparent materials, and the Math Surface folder only on the mathematical-surface ground.
+- Removed the duplicate auto-rotate / rotation-speed rows from the View folder.
+- Help updated in all 20 languages for the new double-click actions.
+
 # [1.2.0] - 2026-10-13
 ### Added
 - **KREATV** shape (Shapes → Objects): a TV whose screen continuously plays the KREA intro video (YouTube, muted autoplay, looped). Double-click the TV to toggle sound. It is a full physics object with a box + sphere compound collider.
