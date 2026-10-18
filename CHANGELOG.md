@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Double-click an object to select it and open the Object panel (double-clicking a KREATV screen still toggles its sound).
 - Double-click the corner axis gizmo (UCS) to switch the transform gizmo to rotate mode.
+- Floating panels: the navbar (by its ⋮⋮ grip), the statistics panel and the gizmo panel can be dragged and snap magnetically to the screen edges and to each other. Each can be closed with ✕; it shrinks with an animation into a chip in the bottom dock and grows back when the chip is clicked. Positions and closed state are remembered.
+- Tab panels open above the navbar when it has been moved near the bottom of the screen.
 
 ### Changed
 - The Object panel only shows the parameters the selected shape uses (e.g. a sphere shows `a` and surface detail; a knot shows `a, b, p, q`, tube settings and joint weighting; KREATV shows only its size). Glass settings (`ior`, transmission) appear only for transparent materials, and the Math Surface folder only on the mathematical-surface ground.
