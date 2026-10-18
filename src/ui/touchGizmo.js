@@ -1,5 +1,6 @@
 // Touch 6-axis Transform Gizmo (Mobile/Tablet)
 import { getUILabel, getCurrentLanguage } from './help.js';
+import { makeFloating, makeCloseButton } from './floatingPanels.js';
 
 function isTouchDevice(){
   return ('ontouchstart' in window) || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0;
@@ -30,15 +31,9 @@ export function setupTouchGizmo(params, saveParamsToActive, applyTransform, gui,
     gizmoRoot = document.createElement('div');
     gizmoRoot.className = 'touch-gizmo';
     gizmoRoot.style.position = 'fixed';
-    // restore saved position if any
-    const savedPos = JSON.parse(localStorage.getItem('tc_gizmo_pos')||'null');
-    if (savedPos && typeof savedPos.x==='number' && typeof savedPos.y==='number'){
-      gizmoRoot.style.left = savedPos.x + 'px';
-      gizmoRoot.style.top = savedPos.y + 'px';
-    } else {
-      gizmoRoot.style.right = '12px';
-      gizmoRoot.style.bottom = '12px';
-    }
+    // Default corner; a saved position is restored by makeFloating below.
+    gizmoRoot.style.right = '12px';
+    gizmoRoot.style.bottom = '12px';
     gizmoRoot.style.zIndex = '1500';
     gizmoRoot.style.display = 'flex';
     gizmoRoot.style.flexDirection = 'column';
@@ -48,14 +43,14 @@ export function setupTouchGizmo(params, saveParamsToActive, applyTransform, gui,
     gizmoRoot.style.width = '212px';
     gizmoRoot.style.boxSizing = 'border-box';
 
-    // DRAG HANDLE
+    // DRAG HANDLE (with close button); dragging/closing via makeFloating.
     const dragBar = document.createElement('div');
-    dragBar.textContent = '⇕ Gizmo';
-    dragBar.style.cursor = 'move';
-    dragBar.style.userSelect = 'none';
+    dragBar.style.display = 'flex';
+    dragBar.style.alignItems = 'center';
+    dragBar.style.justifyContent = 'space-between';
     dragBar.style.fontSize = '11px';
     dragBar.style.letterSpacing = '0.5px';
-    dragBar.style.padding = '4px 10px 4px 10px';
+    dragBar.style.padding = '4px 6px 4px 10px';
     dragBar.style.alignSelf = 'stretch';
     dragBar.style.background = 'linear-gradient(90deg,#20262e,#1a1f25)';
     dragBar.style.border = '1px solid rgba(255,255,255,0.08)';
@@ -64,51 +59,13 @@ export function setupTouchGizmo(params, saveParamsToActive, applyTransform, gui,
     dragBar.style.fontWeight = '600';
     dragBar.style.textShadow = '0 0 6px rgba(0,180,255,0.55)';
     dragBar.style.backdropFilter = 'blur(6px)';
-
-    let dragState = null; // {ox, oy, sx, sy, hadExplicit}
-    const startDrag = (clientX, clientY) => {
-      const rect = gizmoRoot.getBoundingClientRect();
-      dragState = { ox: clientX, oy: clientY, sx: rect.left, sy: rect.top, hadExplicit: gizmoRoot.style.left!=='' || gizmoRoot.style.top!=='' };
-      // if anchored by right/bottom, convert to left/top
-      if (!dragState.hadExplicit){
-        gizmoRoot.style.left = rect.left + 'px';
-        gizmoRoot.style.top = rect.top + 'px';
-        gizmoRoot.style.right = 'auto';
-        gizmoRoot.style.bottom = 'auto';
-      }
-      document.addEventListener('mousemove', onDragMove);
-      document.addEventListener('mouseup', endDrag);
-      document.addEventListener('touchmove', onDragMove, { passive:false });
-      document.addEventListener('touchend', endDrag);
-    };
-    const onDragMove = (e) => {
-      if (!dragState) return;
-      let cx, cy;
-      if (e.touches && e.touches.length){ cx = e.touches[0].clientX; cy = e.touches[0].clientY; e.preventDefault(); }
-      else { cx = e.clientX; cy = e.clientY; }
-      const dx = cx - dragState.ox; const dy = cy - dragState.oy;
-      let nx = dragState.sx + dx; let ny = dragState.sy + dy;
-      // clamp inside viewport
-      const maxX = window.innerWidth - 40; const maxY = window.innerHeight - 40;
-      nx = Math.min(Math.max(-5, nx), maxX);
-      ny = Math.min(Math.max(-5, ny), maxY);
-      gizmoRoot.style.left = nx + 'px';
-      gizmoRoot.style.top = ny + 'px';
-    };
-    const endDrag = () => {
-      if (dragState){
-        // persist
-        const rect = gizmoRoot.getBoundingClientRect();
-        localStorage.setItem('tc_gizmo_pos', JSON.stringify({ x: rect.left, y: rect.top }));
-      }
-      dragState = null;
-      document.removeEventListener('mousemove', onDragMove);
-      document.removeEventListener('mouseup', endDrag);
-      document.removeEventListener('touchmove', onDragMove);
-      document.removeEventListener('touchend', endDrag);
-    };
-    dragBar.addEventListener('mousedown', (e)=>{ startDrag(e.clientX, e.clientY); });
-    dragBar.addEventListener('touchstart', (e)=>{ if (e.touches && e.touches.length){ startDrag(e.touches[0].clientX, e.touches[0].clientY); } });
+    const dragTitle = document.createElement('span');
+    dragTitle.textContent = '⇕ Gizmo';
+    const closeBtn = makeCloseButton(getUILabel('close', getCurrentLanguage()));
+    closeBtn.style.color = '#9fd6ff';
+    closeBtn.style.textShadow = 'none';
+    dragBar.appendChild(dragTitle);
+    dragBar.appendChild(closeBtn);
 
     const panel = document.createElement('div');
     panel.style.display = 'grid';
@@ -221,7 +178,23 @@ export function setupTouchGizmo(params, saveParamsToActive, applyTransform, gui,
     gizmoRoot.appendChild(panel);
     gizmoRoot.appendChild(toggle);
     document.body.appendChild(gizmoRoot);
+
+    floating = makeFloating(gizmoRoot, {
+      key: 'gizmo', handle: dragBar, closeButton: closeBtn,
+      label: getUILabel('gizmo', getCurrentLanguage()),
+      icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="flex:0 0 auto"><path d="M12 2v20M2 12h20M12 2 9 5M12 2l3 3M12 22l-3-3M12 22l3-3M2 12l3-3M2 12l3 3M22 12l-3-3M22 12l-3 3"/></svg>',
+      legacy: () => {
+        const p = JSON.parse(localStorage.getItem('tc_gizmo_pos') || 'null');
+        return (p && typeof p.x === 'number') ? { left: p.x + 'px', top: p.y + 'px', hidden: false } : null;
+      }
+    });
+    closeButton = closeBtn;
   }
 
+  let floating = null, closeButton = null;
   buildTouchGizmo();
+  return {
+    floating,
+    relabel(lang){ if (closeButton) closeButton.title = getUILabel('close', lang); }
+  };
 }

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
 import {
   compileExpression, buildShapeGeometry, buildImplicitGeometry, buildWeightedTube,
-  jointRadiusFactor, OBJECT_TYPES, getShapeKind, CURVES
+  jointRadiusFactor, OBJECT_TYPES, getShapeKind, CURVES, getShapeParams
 } from './shapes.js';
 
 const base = {
@@ -112,5 +112,21 @@ describe('KREATV', () => {
     const col = geometry.userData.collider;
     expect(col.boxes.length).toBeGreaterThan(0);
     expect(col.spheres.length).toBeGreaterThan(0);
+  });
+});
+
+describe('getShapeParams', () => {
+  it('lists only the parameters each shape uses', () => {
+    const tre = getShapeParams('Trefoil');
+    ['a', 'b', 'p', 'q', 'tubeRadius', 'joints'].forEach(k => expect(tre.has(k), k).toBe(true));
+    expect(tre.has('surfSegments')).toBe(false);
+    const sph = getShapeParams('Sphere');
+    expect([...sph].sort()).toEqual(['a', 'surfSegments', 'wireframe']);
+    const tv = getShapeParams('KREATV');
+    expect([...tv].sort()).toEqual(['a', 'wireframe']);
+    const foil = getShapeParams('BaskınFoil');
+    expect(foil.has('magnitude')).toBe(true);
+    expect(foil.has('wireframe')).toBe(false);
+    expect(getShapeParams('Custom Implicit').has('bound')).toBe(true);
   });
 });

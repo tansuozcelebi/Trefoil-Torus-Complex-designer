@@ -3,7 +3,8 @@
  * This is extracted from mainapp.js to reduce file complexity
  */
 
-import { getCurrentLanguage, setLanguage, languages, getTabLabel, getHelpHtml } from './help.js';
+import { getCurrentLanguage, setLanguage, languages, getTabLabel, getHelpHtml, getUILabel } from './help.js';
+import { makeFloating, makeCloseButton } from './floatingPanels.js';
 import { getAboutHtml } from './about.js';
 import { tabs as TabsConfig } from './tabs.ts';
 
@@ -47,6 +48,22 @@ export function setupNavbar() {
     max-width: calc(100vw - 24px);
   `;
   document.body.appendChild(navBar);
+
+  // Grip (drag handle) on the left and a close button pinned to the right end
+  // (order keeps it last even when mainapp appends more controls).
+  const navGrip = document.createElement('div');
+  navGrip.className = 'tc-nav-grip';
+  navGrip.title = getUILabel('drag', getCurrentLanguage());
+  navGrip.innerHTML = '<svg viewBox="0 0 12 20" width="9" height="16" fill="currentColor"><circle cx="3" cy="4" r="1.6"/><circle cx="9" cy="4" r="1.6"/><circle cx="3" cy="10" r="1.6"/><circle cx="9" cy="10" r="1.6"/><circle cx="3" cy="16" r="1.6"/><circle cx="9" cy="16" r="1.6"/></svg>';
+  navGrip.style.cssText = 'display:flex; align-items:center; align-self:stretch; padding:0 4px; margin-left:-4px; color:rgba(255,255,255,0.45); flex:0 0 auto; border-radius:5px;';
+  navBar.appendChild(navGrip);
+  const navClose = makeCloseButton(getUILabel('close', getCurrentLanguage()));
+  navClose.style.order = '99';
+  navClose.style.color = '#fff';
+  navClose.style.marginLeft = '2px';
+  navBar.appendChild(navClose);
+  const MENU_ICON = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="flex:0 0 auto"><path d="M4 6h16M4 12h16M4 18h16"/></svg>';
+  let navFloat = null; // set up below, once the bar has its content
 
   // Mobile overlay
   const mobileOverlay = document.createElement('div');
@@ -191,6 +208,15 @@ export function setupNavbar() {
       panels[name].style.top = top + 'px';
     }
     setPanelVisible(name, true);
+    // The navbar can be dragged anywhere: when the panel would run off the
+    // bottom of the screen, open it above its button instead.
+    if (triggerBtn && panels[name].dataset.userMoved !== '1') {
+      const rect = triggerBtn.getBoundingClientRect();
+      const ph = panels[name].offsetHeight;
+      if (rect.bottom + 8 + ph > window.innerHeight - 12 && rect.top - 8 - ph >= 12) {
+        panels[name].style.top = (rect.top - 8 - ph) + 'px';
+      }
+    }
 
     // Special handling for Scene tab
     if (name === 'Scene' && window.scenePanelAPI?.buildScenePresets) {
@@ -276,6 +302,9 @@ export function setupNavbar() {
       if (content) content.innerHTML = getAboutHtml(newLang);
     }
     if (window.exportPanelAPI?.updateLanguage) window.exportPanelAPI.updateLanguage();
+    if (navFloat) navFloat.setLabel(getUILabel('menu', newLang));
+    navClose.title = getUILabel('close', newLang);
+    navGrip.title = getUILabel('drag', newLang);
     // Notify other modules (e.g. gizmo/physics buttons owned by mainapp) so they
     // re-label their own controls in the new language.
     langListeners.forEach(fn => { try { fn(newLang); } catch (e) {} });
@@ -377,5 +406,12 @@ export function setupNavbar() {
     if (!inNav && !inPanel) Object.keys(panels).forEach(k => setPanelVisible(k, false));
   });
 
-  return { navBar, panels, toggleMobileSidebar, showTab, activeInfo, updateLanguage, onLanguageChange };
+  // Draggable (magnetic) and closable; closing it hides the open tab panels too.
+  navFloat = makeFloating(navBar, {
+    key: 'navbar', handle: navGrip, closeButton: navClose,
+    label: getUILabel('menu', getCurrentLanguage()), icon: MENU_ICON,
+    onChange: (visible) => { if (!visible) Object.keys(panels).forEach(k => setPanelVisible(k, false)); }
+  });
+
+  return { navBar, panels, toggleMobileSidebar, showTab, activeInfo, updateLanguage, onLanguageChange, navFloat };
 }

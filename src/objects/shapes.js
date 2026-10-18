@@ -24,25 +24,25 @@ class FnCurve extends THREE.Curve {
 }
 
 export const CURVES = [
-  { id: 'Trefoil', desc: 'Torus knot (p, q)', closed: true,
+  { id: 'Trefoil', desc: 'Torus knot (p, q)', closed: true, uses: ['a', 'b', 'p', 'q'],
     make: (P) => new TrefoilCurve(P.a, P.b, P.p, P.q) },
-  { id: 'Septafoil', desc: 'Torus knot, many lobes', closed: true,
+  { id: 'Septafoil', desc: 'Torus knot, many lobes', closed: true, uses: ['a', 'b', 'p', 'q'],
     make: (P) => new SeptafoilCurve(P.a, P.b, P.p, P.q) },
-  { id: 'Figure-Eight', desc: 'The 4₁ knot', closed: true,
+  { id: 'Figure-Eight', desc: 'The 4₁ knot', closed: true, uses: ['a', 'b'],
     make: (P) => { const s = P.a / 2; return new FnCurve((t, o) => {
       const th = t * TAU; const r = 2 + Math.cos(2 * th);
       return o.set(s * r * Math.cos(3 * th), s * r * Math.sin(3 * th), s * P.b * Math.sin(4 * th));
     }); } },
-  { id: 'Lissajous', desc: 'Lissajous knot (q, p, 2(p+q)−3)', closed: true,
+  { id: 'Lissajous', desc: 'Lissajous knot (q, p, 2(p+q)−3)', closed: true, uses: ['a', 'b', 'p', 'q'],
     make: (P) => { const s = P.a * 1.4, nx = P.q, ny = P.p, nz = 2 * (P.p + P.q) - 3;
       return new FnCurve((t, o) => { const th = t * TAU;
         return o.set(s * Math.cos(nx * th + 0.7), s * Math.cos(ny * th + 0.2), s * P.b * Math.cos(nz * th));
       }); } },
-  { id: 'Spring', desc: 'Helix — q turns, pitch b', closed: false,
+  { id: 'Spring', desc: 'Helix — q turns, pitch b', closed: false, uses: ['a', 'b', 'q'],
     make: (P) => { const turns = Math.max(1, P.q); return new FnCurve((t, o) => { const th = t * TAU * turns;
       return o.set(P.a * Math.cos(th), P.a * Math.sin(th), (t - 0.5) * turns * 2 * P.b);
     }); } },
-  { id: 'Torus Ring', desc: 'Circle of radius a', closed: true,
+  { id: 'Torus Ring', desc: 'Circle of radius a', closed: true, uses: ['a'],
     make: (P) => new FnCurve((t, o) => o.set(P.a * Math.cos(t * TAU), P.a * Math.sin(t * TAU), 0)) }
 ];
 
@@ -50,33 +50,33 @@ export const CURVES = [
 // fn(u, v) with u, v in [0, 1] → [x, y, z] (math, z up)
 const spow = (x, e) => Math.sign(x) * Math.pow(Math.abs(x), e);
 export const PARAMETRIC = [
-  { id: 'Sphere', desc: 'Radius-a sphere', fn: (u, v, P) => { const th = u * TAU, ph = v * Math.PI;
+  { id: 'Sphere', desc: 'Radius-a sphere', uses: ['a'], fn: (u, v, P) => { const th = u * TAU, ph = v * Math.PI;
       return [P.a * Math.sin(ph) * Math.cos(th), P.a * Math.sin(ph) * Math.sin(th), P.a * Math.cos(ph)]; } },
-  { id: 'Torus', desc: 'Donut — R = a, r = 0.7·b', fn: (u, v, P) => { const th = u * TAU, ph = v * TAU, R = P.a, r = 0.7 * P.b;
+  { id: 'Torus', desc: 'Donut — R = a, r = 0.7·b', uses: ['a', 'b'], fn: (u, v, P) => { const th = u * TAU, ph = v * TAU, R = P.a, r = 0.7 * P.b;
       return [(R + r * Math.cos(ph)) * Math.cos(th), (R + r * Math.cos(ph)) * Math.sin(th), r * Math.sin(ph)]; } },
-  { id: 'Möbius Strip', desc: 'One-sided band', fn: (u, v, P) => { const th = u * TAU, t = (v * 2 - 1) * 0.8 * P.b, R = P.a;
+  { id: 'Möbius Strip', desc: 'One-sided band', uses: ['a', 'b'], fn: (u, v, P) => { const th = u * TAU, t = (v * 2 - 1) * 0.8 * P.b, R = P.a;
       return [(R + t * Math.cos(th / 2)) * Math.cos(th), (R + t * Math.cos(th / 2)) * Math.sin(th), t * Math.sin(th / 2)]; } },
-  { id: 'Klein Bottle', desc: 'Figure-8 immersion', fn: (u, v, P) => { const a = u * TAU, b = v * TAU, R = 0.9 * P.a;
+  { id: 'Klein Bottle', desc: 'Figure-8 immersion', uses: ['a'], fn: (u, v, P) => { const a = u * TAU, b = v * TAU, R = 0.9 * P.a;
       const k = R + Math.cos(a / 2) * Math.sin(b) - Math.sin(a / 2) * Math.sin(2 * b);
       return [k * Math.cos(a), k * Math.sin(a), Math.sin(a / 2) * Math.sin(b) + Math.cos(a / 2) * Math.sin(2 * b)]; } },
-  { id: 'Helicoid', desc: 'Minimal ruled surface', fn: (u, v, P) => { const r = (u * 2 - 1) * P.a, th = v * TAU * 2;
+  { id: 'Helicoid', desc: 'Minimal ruled surface', uses: ['a', 'b'], fn: (u, v, P) => { const r = (u * 2 - 1) * P.a, th = v * TAU * 2;
       return [r * Math.cos(th), r * Math.sin(th), 0.4 * P.b * th]; } },
-  { id: 'Catenoid', desc: 'Minimal surface of revolution', fn: (u, v, P) => { const th = u * TAU, z = (v * 2 - 1) * 1.4, c = P.a / 2;
+  { id: 'Catenoid', desc: 'Minimal surface of revolution', uses: ['a'], fn: (u, v, P) => { const th = u * TAU, z = (v * 2 - 1) * 1.4, c = P.a / 2;
       return [c * Math.cosh(z) * Math.cos(th), c * Math.cosh(z) * Math.sin(th), c * z * 1.3]; } },
-  { id: 'Enneper', desc: 'Self-intersecting minimal surface', fn: (u, v, P) => { const r = u * 1.4, th = v * TAU, k = 0.45 * P.a;
+  { id: 'Enneper', desc: 'Self-intersecting minimal surface', uses: ['a'], fn: (u, v, P) => { const r = u * 1.4, th = v * TAU, k = 0.45 * P.a;
       const x = r * Math.cos(th), y = r * Math.sin(th);
       return [k * (x - x * x * x / 3 + x * y * y), k * (y - y * y * y / 3 + y * x * x), k * (x * x - y * y)]; } },
-  { id: "Dini's Surface", desc: 'Twisted pseudosphere', fn: (u, v, P) => { const a = u * 4 * Math.PI, b = 0.1 + v * 1.9, k = P.a / 2;
+  { id: "Dini's Surface", desc: 'Twisted pseudosphere', uses: ['a', 'b'], fn: (u, v, P) => { const a = u * 4 * Math.PI, b = 0.1 + v * 1.9, k = P.a / 2;
       return [k * Math.cos(a) * Math.sin(b), k * Math.sin(a) * Math.sin(b), k * (Math.cos(b) + Math.log(Math.tan(b / 2)) + 0.2 * P.b * a)]; } },
-  { id: 'Seashell', desc: 'Logarithmic spiral shell', fn: (u, v, P) => { const a = u * 6 * Math.PI, b = v * TAU, k = 0.55 * P.a / 2;
+  { id: 'Seashell', desc: 'Logarithmic spiral shell', uses: ['a'], fn: (u, v, P) => { const a = u * 6 * Math.PI, b = v * TAU, k = 0.55 * P.a / 2;
       const e1 = Math.exp(a / (6 * Math.PI)), c2 = Math.cos(b / 2) ** 2;
       return [k * 2 * (1 - e1) * Math.cos(a) * c2, k * 2 * (-1 + e1) * Math.sin(a) * c2,
         k * (1 - Math.exp(a / (3 * Math.PI)) - Math.sin(b) + e1 * Math.sin(b))]; } },
-  { id: 'Superellipsoid', desc: 'Superquadric — exponent q/3', fn: (u, v, P) => { const th = u * TAU - Math.PI, ph = v * Math.PI - Math.PI / 2, e = Math.max(0.1, P.q / 3);
+  { id: 'Superellipsoid', desc: 'Superquadric — exponent q/3', uses: ['a', 'q'], fn: (u, v, P) => { const th = u * TAU - Math.PI, ph = v * Math.PI - Math.PI / 2, e = Math.max(0.1, P.q / 3);
       return [P.a * spow(Math.cos(ph), e) * spow(Math.cos(th), e), P.a * spow(Math.cos(ph), e) * spow(Math.sin(th), e), P.a * spow(Math.sin(ph), e)]; } },
-  { id: 'Hyperboloid', desc: 'One-sheet hyperboloid', fn: (u, v, P) => { const th = u * TAU, z = (v * 2 - 1) * 1.2, k = 0.6 * P.a;
+  { id: 'Hyperboloid', desc: 'One-sheet hyperboloid', uses: ['a', 'b'], fn: (u, v, P) => { const th = u * TAU, z = (v * 2 - 1) * 1.2, k = 0.6 * P.a;
       return [k * Math.cosh(z) * Math.cos(th), k * Math.cosh(z) * Math.sin(th), k * 1.3 * Math.sinh(z) * P.b]; } },
-  { id: 'Twisted Torus', desc: 'Elliptic section twisted p/2 times', fn: (u, v, P) => { const th = u * TAU, ph = v * TAU, R = P.a;
+  { id: 'Twisted Torus', desc: 'Elliptic section twisted p/2 times', uses: ['a', 'b', 'p'], fn: (u, v, P) => { const th = u * TAU, ph = v * TAU, R = P.a;
       const A = 0.8 * P.b, B = 0.3 * P.b, al = P.p * th / 2, ca = A * Math.cos(ph), cb = B * Math.sin(ph);
       const c1 = ca * Math.cos(al) - cb * Math.sin(al), c2 = ca * Math.sin(al) + cb * Math.cos(al);
       return [(R + c1) * Math.cos(th), (R + c1) * Math.sin(th), c2]; } }
@@ -94,21 +94,21 @@ export const EXPLICIT = [
 // -------------------------------------------------------------- implicit --
 // F(x, y, z) < 0 inside, > 0 outside; bound(P) → half-size of the sampling box
 export const IMPLICIT = [
-  { id: 'Implicit Sphere', name: 'Sphere', desc: 'x² + y² + z² = a²', bound: (P) => P.a * 1.15,
+  { id: 'Implicit Sphere', name: 'Sphere', uses: ['a'], desc: 'x² + y² + z² = a²', bound: (P) => P.a * 1.15,
     F: (x, y, z, P) => x * x + y * y + z * z - P.a * P.a },
-  { id: 'Implicit Torus', name: 'Torus', desc: 'Donut shape', bound: (P) => P.a + 0.7 * P.b + 0.3,
+  { id: 'Implicit Torus', name: 'Torus', uses: ['a', 'b'], desc: 'Donut shape', bound: (P) => P.a + 0.7 * P.b + 0.3,
     F: (x, y, z, P) => { const q = Math.hypot(x, y) - P.a; const r = 0.7 * P.b; return q * q + z * z - r * r; } },
-  { id: 'Cylinder', desc: 'Capped cylinder along z', bound: (P) => P.a * 0.8 + 0.3,
+  { id: 'Cylinder', uses: ['a'], desc: 'Capped cylinder along z', bound: (P) => P.a * 0.8 + 0.3,
     F: (x, y, z, P) => Math.max(Math.hypot(x, y) - P.a / 2, Math.abs(z) - P.a * 0.75) },
-  { id: 'Cone', desc: 'Double cone at origin', bound: (P) => P.a * 0.85 + 0.3,
+  { id: 'Cone', uses: ['a'], desc: 'Double cone at origin', bound: (P) => P.a * 0.85 + 0.3,
     F: (x, y, z, P) => Math.max(Math.hypot(x, y) - 0.6 * Math.abs(z), Math.abs(z) - P.a * 0.8) },
-  { id: "Goursat's Tangle", desc: 'Quartic surface with cubic symmetry', bound: (P) => 3 * P.a / 2,
+  { id: "Goursat's Tangle", uses: ['a'], desc: 'Quartic surface with cubic symmetry', bound: (P) => 3 * P.a / 2,
     F: (x, y, z, P) => { const s = 2 / P.a; x *= s; y *= s; z *= s;
       return x ** 4 + y ** 4 + z ** 4 - 5 * (x * x + y * y + z * z) + 11.8; } },
-  { id: 'Gyroid', desc: 'Triply periodic minimal sheet', bound: (P) => 1.35 * P.a + 0.2,
+  { id: 'Gyroid', uses: ['a'], desc: 'Triply periodic minimal sheet', bound: (P) => 1.35 * P.a + 0.2,
     F: (x, y, z, P) => { const f = 1.6; const g = Math.sin(f * x) * Math.cos(f * y) + Math.sin(f * y) * Math.cos(f * z) + Math.sin(f * z) * Math.cos(f * x);
       return Math.max(Math.abs(g) - 0.32, Math.hypot(x, y, z) - 1.3 * P.a); } },
-  { id: 'Heart', desc: 'Taubin heart surface', bound: (P) => 1.4 * P.a / 1.2,
+  { id: 'Heart', uses: ['a'], desc: 'Taubin heart surface', bound: (P) => 1.4 * P.a / 1.2,
     F: (x, y, z, P) => { const s = 1.2 / P.a; x *= s; y *= s; z *= s;
       const k = x * x + 2.25 * y * y + z * z - 1; return k * k * k - x * x * z * z * z - 0.1125 * y * y * z * z * z; } }
 ];
@@ -158,6 +158,27 @@ export const SHAPE_PARAM_KEYS = Object.keys(SHAPE_PARAM_DEFAULTS);
 
 export function getShapeKind(type){ return (byId.get(type) || { kind: 'curve' }).kind; }
 export function getShapeLabel(type){ const e = byId.get(type); return (e && e.def && (e.def.name || e.def.id)) || type; }
+// Object-panel parameters each shape actually uses, so the panel only shows
+// those. Groups: geometry keys (a, b, p, q, tubeRadius, ...), 'joints' (joint
+// weighting folder) and 'wireframe' (wireframe overlay toggle/colour).
+const KIND_EXTRAS = {
+  curve: ['tubeRadius', 'uSegments', 'vSegments', 'joints', 'wireframe'],
+  ribbon: ['a', 'b', 'p', 'q', 'uSegments', 'magnitude'],
+  parametric: ['surfSegments', 'wireframe'],
+  explicit: ['a', 'b', 'surfSegments', 'wireframe'],
+  implicit: ['resolution', 'wireframe'],
+  'custom-parametric': ['surfSegments', 'wireframe'],
+  'custom-explicit': ['surfSegments', 'bound', 'wireframe'],
+  'custom-implicit': ['resolution', 'bound', 'wireframe'],
+  tv: ['a', 'wireframe']
+};
+export function getShapeParams(type){
+  const e = byId.get(type);
+  const kind = e ? e.kind : 'curve';
+  const uses = (e && e.def && e.def.uses) || [];
+  return new Set([...uses, ...(KIND_EXTRAS[kind] || [])]);
+}
+
 export function isSurfaceKind(kind){ return kind !== 'curve' && kind !== 'ribbon' && kind !== 'tv'; }
 
 // Ordered list for the "Object Type" dropdown.

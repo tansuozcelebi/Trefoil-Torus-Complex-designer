@@ -15,6 +15,7 @@ import { setupNavbar } from './ui/navbar.js';
 import { buildShapeGeometry, isSurfaceKind, getShapeKind, SHAPE_PARAM_DEFAULTS, SHAPE_PARAM_KEYS } from './objects/shapes.js';
 import { setupShapeLibrary } from './ui/shapeLibrary.js';
 import { createKreaTvLayer } from './ui/kreatvScreen.js';
+import { makeFloating, makeCloseButton } from './ui/floatingPanels.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
 import { Reflector } from 'three/examples/jsm/objects/Reflector.js';
@@ -201,15 +202,13 @@ statsOverlay.style.cssText = `
 const statsHeader = document.createElement('div');
 statsHeader.style.cssText = `
   display:flex; align-items:center; justify-content:space-between; gap:8px;
-  padding: 5px 8px; cursor: move; background: rgba(255,255,255,0.06); user-select: none;
+  padding: 5px 8px; background: rgba(255,255,255,0.06);
 `;
 const statsTitle = document.createElement('span');
 statsTitle.textContent = getUILabel('stats', getCurrentLanguage());
 statsTitle.style.cssText = 'font-size:11px; letter-spacing:0.4px; opacity:0.85;';
-const statsClose = document.createElement('button');
-statsClose.textContent = '✕';
-statsClose.title = 'Kapat';
-statsClose.style.cssText = 'border:none; background:transparent; color:#fff; cursor:pointer; font-size:13px; line-height:1; padding:0 2px; opacity:0.7;';
+const statsClose = makeCloseButton(getUILabel('close', getCurrentLanguage()));
+statsClose.style.color = '#fff';
 statsHeader.appendChild(statsTitle);
 statsHeader.appendChild(statsClose);
 
@@ -243,71 +242,13 @@ statsOverlay.appendChild(statsHeader);
 statsOverlay.appendChild(statsBody);
 document.body.appendChild(statsOverlay);
 
-// Small chip to re-open the panel after it's closed.
-const statsRestore = document.createElement('button');
-statsRestore.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" style="flex:0 0 auto"><path d="M4 20V10M10 20V4M16 20v-6M22 20H2"/></svg><span class="tc-stats-restore-label">' + getUILabel('stats', getCurrentLanguage()) + '</span>';
-statsRestore.style.cssText = `position:fixed; left:12px; bottom:12px; z-index:1000; display:none; align-items:center; gap:6px; padding:6px 10px; border:none; border-radius:6px; background:rgba(0,0,0,0.6); color:#fff; font:600 11px monospace; cursor:pointer;`;
-document.body.appendChild(statsRestore);
-
-// --- Persist position + closed state ---
-const STATS_KEY = 'tc_stats_ui';
-function saveStatsUi(){
-  try {
-    localStorage.setItem(STATS_KEY, JSON.stringify({
-      left: statsOverlay.style.left || null,
-      top: statsOverlay.style.top || null,
-      hidden: statsOverlay.style.display === 'none'
-    }));
-  } catch(e) {}
-}
-try {
-  const s = JSON.parse(localStorage.getItem(STATS_KEY) || 'null');
-  if (s){
-    if (s.top){ statsOverlay.style.left = s.left; statsOverlay.style.top = s.top; statsOverlay.style.bottom = 'auto'; }
-    if (s.hidden){ statsOverlay.style.display = 'none'; statsRestore.style.display = 'inline-flex'; }
-  }
-} catch(e) {}
-
-// --- Close / restore ---
-statsClose.addEventListener('click', (e) => {
-  e.stopPropagation();
-  statsOverlay.style.display = 'none';
-  statsRestore.style.display = 'inline-flex';
-  saveStatsUi();
-});
-statsRestore.addEventListener('click', () => {
-  statsOverlay.style.display = 'block';
-  statsRestore.style.display = 'none';
-  saveStatsUi();
-});
-
-// --- Drag by the header ---
-let _statsDrag = false, _sdx = 0, _sdy = 0;
-statsHeader.addEventListener('pointerdown', (e) => {
-  if (e.target === statsClose) return; // let the close button click through
-  const r = statsOverlay.getBoundingClientRect();
-  statsOverlay.style.left = r.left + 'px';
-  statsOverlay.style.top = r.top + 'px';
-  statsOverlay.style.bottom = 'auto';
-  _sdx = e.clientX - r.left;
-  _sdy = e.clientY - r.top;
-  _statsDrag = true;
-  try { statsHeader.setPointerCapture(e.pointerId); } catch(_) {}
-  e.preventDefault();
-});
-statsHeader.addEventListener('pointermove', (e) => {
-  if (!_statsDrag) return;
-  let nl = e.clientX - _sdx, nt = e.clientY - _sdy;
-  nl = Math.max(0, Math.min(window.innerWidth - statsOverlay.offsetWidth, nl));
-  nt = Math.max(0, Math.min(window.innerHeight - statsOverlay.offsetHeight, nt));
-  statsOverlay.style.left = nl + 'px';
-  statsOverlay.style.top = nt + 'px';
-});
-statsHeader.addEventListener('pointerup', (e) => {
-  if (!_statsDrag) return;
-  _statsDrag = false;
-  try { statsHeader.releasePointerCapture(e.pointerId); } catch(_) {}
-  saveStatsUi();
+// Draggable (magnetic to the screen edges and the other floating panels) and
+// closable: a closed panel shrinks into a chip in the bottom dock.
+const statsFloat = makeFloating(statsOverlay, {
+  key: 'stats', handle: statsHeader, closeButton: statsClose,
+  label: getUILabel('stats', getCurrentLanguage()),
+  icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" style="flex:0 0 auto"><path d="M4 20V10M10 20V4M16 20v-6M22 20H2"/></svg>',
+  legacy: () => JSON.parse(localStorage.getItem('tc_stats_ui') || 'null')
 });
 
 function updateStats(){
@@ -582,6 +523,7 @@ function setActive(id){
   // sync GUI params from record
   Object.assign(params, rec.params);
   try { if (typeof gui !== 'undefined') gui.updateDisplay(); } catch(e) {}
+  try { if (typeof refreshForShape === 'function') refreshForShape(params.objectType); } catch(e) {}
   updateActiveHeader(rec);
   // mirror globals for compatibility
   knotMesh = rec.mesh || null;
@@ -903,7 +845,7 @@ renderer.domElement.addEventListener('pointermove', handleUCSPointerMove);
 renderer.domElement.addEventListener('pointerdown', handleUCSPointerDown);
 
 // Setup GUI menu (objectType at the top)
-const { gui, viewFolder, sixFolder } = setupGUI(
+const { gui, viewFolder, sixFolder, refreshForShape, setMathFolderVisible } = setupGUI(
   params,
   rebuild,
   updateMaterial,
@@ -1232,8 +1174,9 @@ function relabelUI(lang){
     updateStats();
     const rec = getActiveRecord && getActiveRecord();
     if (rec) updateActiveHeader(rec);
-    const chip = document.querySelector('.tc-stats-restore-label');
-    if (chip) chip.textContent = getUILabel('stats', lang);
+    statsFloat.setLabel(getUILabel('stats', lang));
+    statsClose.title = getUILabel('close', lang);
+    touchGizmoAPI.relabel(lang);
   } catch(e) {}
   const objHandleEl = document.querySelector('.tc-obj-handle');
   if (objHandleEl) objHandleEl.textContent = '⇕ ' + getUILabel('objectDrag', lang);
@@ -1435,6 +1378,8 @@ function rebuild(){
   }
 
   toggleWireframe(params.useWireframe);
+  // Object panel shows only the rows this shape uses.
+  try { refreshForShape(params.objectType); } catch(e) {}
   // KREATV: add the video screen + logo to the cabinet.
   if (shapeKind === 'tv') kreaTv.attach(knotMesh, knotGeometry.userData.kreatv);
   // update vertex/face stats
@@ -1628,6 +1573,7 @@ function setGroundStyle(style){
   // If physics is running, refresh the terrain collider for the new surface so
   // objects collide with the mathematical surface (and revert to flat otherwise),
   // and update the collision floor depth (Clearwater sinks 50 units).
+  try { setMathFolderVisible(style === 'Math'); } catch(e) {}
   if (typeof updateTerrainCollider === 'function') updateTerrainCollider();
   if (params.physics && typeof updatePhysicsGroundY === 'function') updatePhysicsGroundY();
 }
@@ -1918,17 +1864,37 @@ renderer.domElement.addEventListener('pointerdown', (event) => {
   }
 });
 
-// Double-click a KREATV to turn its sound on/off.
+// Double-click:
+//  - on the corner axis gizmo (UCS): switch the transform gizmo to rotate mode
+//  - on a KREATV screen: turn its sound on/off
+//  - on any other part of an object: select it and open the Object panel
 renderer.domElement.addEventListener('dblclick', (event) => {
+  if (params.showUCSGizmo && getPointerInUCS(event)){
+    params.showGizmo = true;
+    setGizmoMode('rotate');
+    attachGizmo();
+    refreshGizmoNav();
+    return;
+  }
   const rect = renderer.domElement.getBoundingClientRect();
   pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
   pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
   raycaster.setFromCamera(pointer, camera);
   const meshes = objects.map(o => o.mesh).filter(Boolean);
   const hit = raycaster.intersectObjects(meshes, true)[0];
-  let m = hit && hit.object;
-  while (m && !(m.userData && m.userData.kreatv)) m = m.parent;
-  if (m) kreaTv.toggleSound(m);
+  if (!hit) return;
+  if (hit.object.name === 'kreatv-screen'){
+    let m = hit.object;
+    while (m && !(m.userData && m.userData.kreatv)) m = m.parent;
+    if (m) kreaTv.toggleSound(m);
+    return;
+  }
+  let root = hit.object;
+  while (root && !objects.some(o => o.mesh === root)) root = root.parent;
+  const rec = root && objects.find(o => o.mesh === root);
+  if (!rec) return;
+  if (rec.id !== activeId) setActive(rec.id);
+  showTab('Object');
 });
 
 // expose rebuild for GUI callbacks
@@ -2011,7 +1977,7 @@ window.addEventListener('pointerdown', (e) => {
 
 // --- Touch 6-axis Transform Gizmo (Mobile/Tablet) ---
 // Initialized from external module
-setupTouchGizmo(params, saveParamsToActive, applyTransform, gui, {
+const touchGizmoAPI = setupTouchGizmo(params, saveParamsToActive, applyTransform, gui, {
   modeButtons: gizmoNav,
   // While the on-screen gizmo moves the active object, grab it in the physics
   // sim so it collides with the others (and doesn't fall) until released.
