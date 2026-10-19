@@ -1081,11 +1081,11 @@ function syncPhysicsBodies(){
 }
 
 // When physics is on and a non-flat surface with a collider is active (the
-// mathematical surface), install its triangle-mesh terrain so objects fall
-// onto and rest on the real surface. Otherwise use the flat ground plane.
+// mathematical surface or the funnel), install its triangle-mesh terrain so
+// objects fall onto and rest on the real surface. Otherwise use the flat plane.
 function updateTerrainCollider(){
   if (!physics.setTerrain) return;
-  const surf = currentGroundStyle === 'Math' ? mathObj : null;
+  const surf = currentGroundStyle === 'Math' ? mathObj : currentGroundStyle === 'Funnel' ? funnelObj : null;
   if (params.physics && surf && surf.collider){
     physics.setTerrain(surf.collider.vertices, surf.collider.indices);
   } else {

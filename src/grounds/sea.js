@@ -48,8 +48,8 @@ export function createSea(groundY){
     textureHeight: 512,
     waterNormals,
     sunDirection: new THREE.Vector3(0.7, 0.8, 0.2).normalize(),
-    sunColor: 0xffffff,
-    waterColor: 0x0a2b3a,
+    sunColor: 0xbfe3ff,
+    waterColor: 0x1a6fd1, // ocean blue
     distortionScale: 6.0,
     fog: false
   });

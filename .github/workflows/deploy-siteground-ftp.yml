@@ -29,6 +29,10 @@ concurrency:
   group: deploy-siteground-ftp
   cancel-in-progress: true
 
+# contents: write — the build bumps the patch version and commits it back.
+permissions:
+  contents: write
+
 jobs:
   deploy:
     name: Build & FTP upload
@@ -60,10 +64,8 @@ jobs:
 
       - name: Build
         if: env.SITEGROUND_FTP_HOST != ''
+        # prebuild bumps the patch version (x.y.Z -> x.y.Z+1) before building.
         run: npm run build
-        env:
-          # Deploy the version committed in package.json (no auto patch bump).
-          NO_VERSION_BUMP: '1'
 
       - name: Upload dist/ over FTPS
         if: env.SITEGROUND_FTP_HOST != ''
@@ -78,3 +80,17 @@ jobs:
           server-dir: ${{ secrets.SITEGROUND_FTP_DIR }}
           # Mirror the build without wiping unrelated files on the host.
           dangerous-clean-slate: false
+
+      - name: Commit the bumped version
+        if: env.SITEGROUND_FTP_HOST != ''
+        # Keep main in step with the deployed version so the next build
+        # continues from it. GITHUB_TOKEN pushes do not trigger workflows,
+        # and [skip ci] makes that explicit.
+        run: |
+          version=$(node -p "require('./package.json').version")
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git commit -m "chore: version $version [skip ci]"
+          git pull --rebase origin main
+          git push origin HEAD:main
