@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 
 # [Unreleased]
+### Changed
+- Every build bumps the patch version by one (x.y.Z → x.y.Z+1), including the SiteGround deploy, which commits the new version back to main (`chore: version … [skip ci]`). The lockfile's version is kept in step. PR CI builds stay validation-only (`NO_VERSION_BUMP`).
+- Funnel ground rebuilt as an upright funnel (rim at ground level, flat floor below, flat apron around it), lighter with subtle grid lines.
+- Sea Wave water is ocean blue.
+
+### Fixed
+- Funnel + physics: objects now collide with the funnel (triangle-mesh collider) instead of falling through it to an invisible plane.
+
+# [2026-10-18] (PR #48)
 ### Added
 - Double-click an object to select it and open the Object panel (double-clicking a KREATV screen still toggles its sound).
 - Double-click the corner axis gizmo (UCS) to switch the transform gizmo to rotate mode.
