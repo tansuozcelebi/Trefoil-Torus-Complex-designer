@@ -1,0 +1,10 @@
+{
+  "appId": "com.kreamakina.trefoil",
+  "appName": "Trefoil Designer",
+  "webDir": "dist",
+  "backgroundColor": "#0b0f14",
+  "ios": {
+    "contentInset": "never",
+    "allowsLinkPreview": false
+  }
+}
