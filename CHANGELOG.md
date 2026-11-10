@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 
 # [Unreleased]
+### Added
+- iPhone app: the site is wrapped in a native iOS shell with Capacitor (`ios/`, bundle ID `com.kreamakina.trefoil`, app name *Trefoil Designer*) with an app icon and dark launch screen made from the trefoil logo.
+- `iOS TestFlight` workflow: on every push to main (or on demand) a macOS runner builds, signs (App Store Connect API key, Xcode automatic signing) and uploads the app to TestFlight. Skips with a warning until its secrets are set; setup in `IOS_TESTFLIGHT.md`.
+- `npm run ios:sync` / `npm run ios:open` for local Xcode builds.
+
+# [1.2.1] (PR #49)
 ### Changed
 - Every build bumps the patch version by one (x.y.Z → x.y.Z+1), including the SiteGround deploy, which commits the new version back to main (`chore: version … [skip ci]`). The lockfile's version is kept in step. PR CI builds stay validation-only (`NO_VERSION_BUMP`).
 - Funnel ground rebuilt as an upright funnel (rim at ground level, flat floor below, flat apron around it), lighter with subtle grid lines.
