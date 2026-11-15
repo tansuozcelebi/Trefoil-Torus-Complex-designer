@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 # [Unreleased]
 ### Added
+- About page: a **Highlights** row of cards with the app's own numbers (shapes, environments, languages, export formats), translated in all 20 languages. The counts are read from the app, so they stay correct as it grows.
+- Loading screen with the logo until the app has started; `<noscript>` message.
+- `robots.txt`, `sitemap.xml`, PNG app icons (home-screen icon on iPhone/Android) and a 1200×630 share image that is actually deployed (`preview.jpg` was referenced but never published).
+
+### Changed
+- About page uses one layout for every language (version, highlights, author, links, knot theory); the duplicate version line and the broken "More on knots" link are gone.
+- Help page: topics are collapsible sections (Mouse and Keyboard open by default) and the keyboard shortcuts are an aligned key/description table.
+- Menu panels: open above the gizmo and statistics panels with a more opaque background so text stays readable, slim scrollbars, taller on large screens, keyboard focus rings, **Esc** closes the open panel, and open panels are kept on screen when the window is resized or the phone rotated.
+- `index.html`: new title/description, Open Graph and Twitter tags, `WebApplication` structured data with a feature list; the page `lang` attribute follows the selected language.
+
+### Fixed
+- On phones, tab panels opened in the top-left corner on top of the menu bar; they now open below it.
+- The stray "TreFoil Torus Designer" text behind the menu bar is now a hidden page heading.
+
+# [1.2.2] (PR #50)
+### Added
 - iPhone app: the site is wrapped in a native iOS shell with Capacitor (`ios/`, bundle ID `com.kreamakina.trefoil`, app name *Trefoil Designer*) with an app icon and dark launch screen made from the trefoil logo.
 - `iOS TestFlight` workflow: on every push to main (or on demand) a macOS runner builds, signs (App Store Connect API key, Xcode automatic signing) and uploads the app to TestFlight. Skips with a warning until its secrets are set; setup in `IOS_TESTFLIGHT.md`.
 - `npm run ios:sync` / `npm run ios:open` for local Xcode builds.

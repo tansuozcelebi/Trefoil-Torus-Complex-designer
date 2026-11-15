@@ -36,7 +36,7 @@ export function setupNavbar() {
     top: 12px;
     left: 12px;
     transform: none;
-    z-index: 1000;
+    z-index: 1560; /* above the gizmo/stats panels, below the dock */
     display: flex;
     align-items: center;
     gap: 6px;
@@ -193,11 +193,17 @@ export function setupNavbar() {
     const triggerBtn = document.querySelector(`button[data-tab="${name}"]`) ||
                        Array.from(document.querySelectorAll('button[data-tab]')).find(b => b.dataset.tab === name);
     // Keep the user's chosen position for panels they've dragged.
-    if (triggerBtn && panels[name].dataset.userMoved !== '1') {
-      const rect = triggerBtn.getBoundingClientRect();
-      const minW = 320;
+    // On phones the tab buttons are hidden (hamburger menu), so anchor the
+    // panel to the navbar itself instead of a zero-sized button.
+    const anchorRect = () => {
+      const r = triggerBtn ? triggerBtn.getBoundingClientRect() : null;
+      return (r && r.width > 0) ? r : navBar.getBoundingClientRect();
+    };
+    if (panels[name].dataset.userMoved !== '1') {
+      const rect = anchorRect();
+      const minW = Math.min(320, window.innerWidth - 24);
       panels[name].style.minWidth = minW + 'px';
-      let left = rect.left;
+      let left = Math.max(12, rect.left);
       let top = rect.bottom + 8;
 
       const pw = Math.max(panels[name].offsetWidth || 0, minW);
@@ -210,8 +216,8 @@ export function setupNavbar() {
     setPanelVisible(name, true);
     // The navbar can be dragged anywhere: when the panel would run off the
     // bottom of the screen, open it above its button instead.
-    if (triggerBtn && panels[name].dataset.userMoved !== '1') {
-      const rect = triggerBtn.getBoundingClientRect();
+    if (panels[name].dataset.userMoved !== '1') {
+      const rect = anchorRect();
       const ph = panels[name].offsetHeight;
       if (rect.bottom + 8 + ph > window.innerHeight - 12 && rect.top - 8 - ph >= 12) {
         panels[name].style.top = (rect.top - 8 - ph) + 'px';
@@ -262,11 +268,11 @@ export function setupNavbar() {
     const panel = document.createElement('div');
     panel.className = 'tc-panel';
     panel.style.cssText = `
-      position: fixed; transform: translateY(-8px) scale(0.98); z-index: 999;
-      background: rgba(15,15,20,0.65); backdrop-filter: blur(8px) saturate(120%);
+      position: fixed; transform: translateY(-8px) scale(0.98); z-index: 1550;
+      background: rgba(15,15,20,0.88); backdrop-filter: blur(8px) saturate(120%);
       border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 10px 28px rgba(0,0,0,0.35);
       color: #fff; padding: 12px; border-radius: 10px; min-width: 320px;
-      max-height: 60vh; overflow: auto; opacity: 0; display: none;
+      max-height: min(70vh, calc(100vh - 72px)); overflow: auto; opacity: 0; display: none;
       font-family: var(--tc-font); font-size: 13px; line-height: 1.45;
       transition: transform 360ms cubic-bezier(0.2, 0.8, 0.2, 1.2), opacity 360ms cubic-bezier(0.2, 0.8, 0.2, 1);
     `;
@@ -284,6 +290,7 @@ export function setupNavbar() {
   function onLanguageChange(fn) { if (typeof fn === 'function') langListeners.push(fn); }
   function updateLanguage(newLang) {
     setLanguage(newLang);
+    document.documentElement.lang = newLang;
     const langBtn = document.querySelector('button[data-lang-selector]');
     const langData = languages.find(l => l.code === newLang);
     if (langBtn && langData) langBtn.innerHTML = `${GLOBE_SVG}<span>${newLang.toUpperCase()}</span>`;
@@ -310,6 +317,7 @@ export function setupNavbar() {
     langListeners.forEach(fn => { try { fn(newLang); } catch (e) {} });
   }
 
+  document.documentElement.lang = getCurrentLanguage();
   const langContainer = document.createElement('div');
   langContainer.style.position = 'relative';
   const currentLangData = languages.find(l => l.code === getCurrentLanguage()) || languages[0];
@@ -404,6 +412,22 @@ export function setupNavbar() {
     let inPanel = false;
     Object.values(panels).forEach(p => { if (p.contains(e.target)) inPanel = true; });
     if (!inNav && !inPanel) Object.keys(panels).forEach(k => setPanelVisible(k, false));
+  });
+  // Esc closes the open panel (unless a text field is being edited).
+  window.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName || '')) return;
+    Object.keys(panels).forEach(k => setPanelVisible(k, false));
+  });
+  // Keep open panels on screen when the window shrinks or the phone rotates.
+  window.addEventListener('resize', () => {
+    Object.values(panels).forEach(p => {
+      if (p.style.display === 'none') return;
+      const r = p.getBoundingClientRect();
+      const left = Math.max(12, Math.min(r.left, window.innerWidth - r.width - 12));
+      const top = Math.max(12, Math.min(r.top, window.innerHeight - r.height - 12));
+      if (left !== r.left) p.style.left = left + 'px';
+      if (top !== r.top) p.style.top = top + 'px';
+    });
   });
 
   // Draggable (magnetic) and closable; closing it hides the open tab panels too.

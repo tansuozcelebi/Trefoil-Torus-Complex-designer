@@ -9,8 +9,8 @@ import { setupGUI } from './ui/guiMenu.js';
 import { setupScenePanel } from './ui/scenePanel.js';
 import { setupTouchGizmo } from './ui/touchGizmo.js';
 import { getHelpHtml, getCurrentLanguage, setLanguage, languages, getTabLabel, getUILabel, getGuiLabel, getStatsLabel } from './ui/help.js';
-import { getAboutHtml } from './ui/about.js';
-import { setupExportPanel } from './ui/exportMenu.js';
+import { getAboutHtml, setAboutStats } from './ui/about.js';
+import { setupExportPanel, EXPORT_FORMATS } from './ui/exportMenu.js';
 import { setupNavbar } from './ui/navbar.js';
 import { buildShapeGeometry, isSurfaceKind, getShapeKind, SHAPE_PARAM_DEFAULTS, SHAPE_PARAM_KEYS } from './objects/shapes.js';
 import { setupShapeLibrary } from './ui/shapeLibrary.js';
@@ -74,6 +74,42 @@ style.textContent = `
      ensure high-contrast text and friendlier link color in About */
   div[style] a { color: #7fbfff; text-decoration: underline; }
   #tc-modal-root div a { color: #9fc8ff; }
+
+  /* Pop-out panels: slim scrollbar, consistent form controls, keyboard focus */
+  .tc-panel { scrollbar-width: thin; scrollbar-color: rgba(120,140,170,0.5) transparent; overscroll-behavior: contain; }
+  .tc-panel::-webkit-scrollbar { width: 6px; height: 6px; }
+  .tc-panel::-webkit-scrollbar-thumb { background: rgba(120,140,170,0.5); border-radius: 3px; }
+  .tc-panel::-webkit-scrollbar-track { background: transparent; }
+  .tc-panel select { padding: 5px 8px; border-radius: 6px; background: rgba(40,40,50,0.85); color: #fff; border: 1px solid rgba(100,100,120,0.5); }
+  .tc-panel button:focus-visible, .tc-panel select:focus-visible, .tc-panel input:focus-visible,
+  .tc-panel summary:focus-visible, button[data-tab]:focus-visible { outline: 2px solid #4db8ff; outline-offset: 1px; }
+
+  /* Reading pages (Help, About) */
+  .tc-doc { max-width: 440px; }
+  .tc-doc ul { margin: 4px 0 8px; padding-left: 18px; }
+  .tc-doc li { margin: 3px 0; line-height: 1.5; }
+  .tc-doc kbd { display: inline-block; min-width: 18px; padding: 1px 5px; text-align: center; font-size: 11px; font-weight: 600;
+    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.22); border-bottom-width: 2px; border-radius: 4px; }
+  .tc-doc details { border-top: 1px solid rgba(255,255,255,0.08); }
+  .tc-doc summary { cursor: pointer; padding: 8px 2px; font-weight: 600; color: #9fc8ff; user-select: none; border-radius: 4px; }
+  .tc-doc summary:hover { color: #cfe4ff; }
+  .tc-doc details[open] > summary { color: #fff; }
+  .tc-doc .tc-keys { display: grid; grid-template-columns: max-content 1fr; gap: 5px 12px; margin: 4px 0 10px; align-items: center; }
+  .tc-doc .tc-keys dt { white-space: nowrap; }
+  .tc-doc .tc-keys dd { margin: 0; }
+
+  /* About: highlight cards + author row */
+  .tc-about-locale { text-align: right; margin-bottom: 4px; }
+  .tc-about-tagline { color: #9db7d3; }
+  .tc-brag { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 6px 0 12px; }
+  @media (max-width: 480px) { .tc-brag { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .tc-brag-card { padding: 10px 8px; text-align: center; border-radius: 10px;
+    background: linear-gradient(160deg, rgba(0,170,255,0.16), rgba(0,85,255,0.07)); border: 1px solid rgba(0,170,255,0.25); }
+  .tc-brag-value { font-size: 26px; font-weight: 700; line-height: 1.1; color: #6fd0ff; font-variant-numeric: tabular-nums; }
+  .tc-brag-label { margin-top: 3px; font-size: 11px; color: #c4d6ea; line-height: 1.25; }
+  .tc-about-author { display: flex; align-items: center; gap: 12px; margin: 12px 0; }
+  .tc-about-author img { border-radius: 50%; object-fit: cover; box-shadow: 0 0 12px rgba(0,170,255,0.35); flex: 0 0 auto; }
+  .tc-about-author h3 { margin: 0 0 4px; }
   
   /* Custom scrollbar for horizontal navbar scroll */
   .tc-navbar-tabs::-webkit-scrollbar {
@@ -1926,30 +1962,22 @@ const languageOptions = languages.map(l =>
   `<option value="${l.code}">${l.flag} ${l.name}</option>`
 ).join('');
 
+// Highlight counts the About page can't derive on its own.
+setAboutStats({ environments: toolbar.children.length, formats: EXPORT_FORMATS.length });
 panels['About'].innerHTML = `
-  <div id="aboutLocale">
-    <label>Language: </label>
-    <select id="aboutLang" style="padding:4px 8px; border-radius:4px; background:rgba(40,40,50,0.8); color:#fff; border:1px solid rgba(100,100,120,0.5);">
+  <div id="aboutLocale" class="tc-about-locale">
+    <select id="aboutLang" aria-label="Language">
       ${languageOptions}
     </select>
   </div>
-  <div style="margin-top:8px; font-size:11px; color:#7da6cc;">
-    <strong>Version:</strong> ${APP_VERSION} — ${new Date().toISOString().split('T')[0]}
-  </div>
-  <div id="aboutContent" style="margin-top:10px">${getAboutHtml(getCurrentLanguage())}</div>
-  <div style="margin-top:10px"><a href="#" id="aboutMore">More on knots</a></div>
+  <div id="aboutContent" class="tc-doc">${getAboutHtml(getCurrentLanguage())}</div>
 `;
 // Set the select to match current language
 panels['About'].querySelector('#aboutLang').value = getCurrentLanguage();
-
-// wire events
 panels['About'].querySelector('#aboutLang').addEventListener('change', (e) => {
   updateLanguage(e.target.value);
 });
-panels['About'].querySelector('#aboutMore').addEventListener('click', (e) => {
-  e.preventDefault();
-  showModal(getAboutHtml(panels['About'].querySelector('#aboutLang').value), { title: 'About — Trefoil Torus Complex' });
-});
+panels['Help'].classList.add('tc-doc');
 panels['Help'].innerHTML = getHelpHtml(getCurrentLanguage());
 
 // allow mounting the React-based nav optionally
@@ -1993,3 +2021,9 @@ const touchGizmoAPI = setupTouchGizmo(params, saveParamsToActive, applyTransform
   },
   onTransformEnd: () => { physicsHeldMesh = null; }
 });
+
+// The app is up: fade out the boot screen from index.html.
+{
+  const boot = document.getElementById('tc-boot');
+  if (boot){ boot.style.opacity = '0'; setTimeout(() => boot.remove(), 400); }
+}

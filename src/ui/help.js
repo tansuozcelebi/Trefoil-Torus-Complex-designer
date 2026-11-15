@@ -431,25 +431,22 @@ const HELP_TEXT = {
 const HELP_KEYS = [['W', 'S'], ['A', 'D'], ['Q', 'E'], ['Shift'], ['I', 'K'], ['J', 'L'], ['U', 'O'], ['N', 'M'], ['G'], ['R']];
 const HELP_PANELS = ['Home', 'Environment', 'Scene', 'Shapes', 'Object', 'Export', 'About'];
 
+// Each topic is a collapsible section; the two most used ones start open so the
+// panel stays short enough to scan.
 function buildHelp(lang){
   const t = HELP_TEXT[lang] || HELP_TEXT.en;
   const list = (items) => `<ul>\n${items.map(i => `  <li>${i}</li>`).join('\n')}\n</ul>`;
-  const kbd = (keys) => keys.map(k => `<kbd>${k}</kbd>`).join(' / ');
+  const kbd = (keys) => keys.map(k => `<kbd>${k}</kbd>`).join(' ');
+  const keys = `<dl class="tc-keys">\n${HELP_KEYS.map((ks, i) => `  <dt>${kbd(ks)}</dt><dd>${t.k[i]}</dd>`).join('\n')}\n</dl>`;
+  const section = (title, body, open) => `<details${open ? ' open' : ''}>\n<summary>${title}</summary>\n${body}\n</details>`;
   return `<h3>${t.h}</h3>
-<p><strong>${t.mouse}:</strong></p>
-${list(t.m)}
-<p><strong>${t.kb}:</strong></p>
-${list(HELP_KEYS.map((keys, i) => `${kbd(keys)} — ${t.k[i]}`))}
-<p><strong>${t.panels}:</strong></p>
-${list(HELP_PANELS.map((tab, i) => `<strong>${getTabLabel(tab, lang)}:</strong> ${t.p[i]}`))}
-<p><strong>${t.phys}:</strong></p>
-${list(t.ph)}
-<p><strong>📺 KREATV:</strong></p>
-${list(t.tv)}
-<p><strong>${t.touch}:</strong></p>
-${list(t.tc)}
-<p><strong>${t.tips}:</strong></p>
-${list([t.ucs])}`;
+${section(t.mouse, list(t.m), true)}
+${section(t.kb, keys, true)}
+${section(t.panels, list(HELP_PANELS.map((tab, i) => `<strong>${getTabLabel(tab, lang)}:</strong> ${t.p[i]}`)))}
+${section(t.phys, list(t.ph))}
+${section('KREATV', list(t.tv))}
+${section(t.touch, list(t.tc))}
+${section(t.tips, list([t.ucs]))}`;
 }
 
 const helpContent = Object.fromEntries(languages.map(l => [l.code, buildHelp(l.code)]));

@@ -4,58 +4,79 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
-    <!-- Favicon -->
+    <!-- Icons -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#0b0f14" />
-    
-    <!-- SEO Meta Tags -->
-    <title>Trefoil Knot – 3D Parametric Surface Visualization | FABUS</title>
-    <meta name="description" content="Explore interactive 3D trefoil knots, parametric surfaces, and curves built with WebGL and Three.js. Learn about mathematical knot theory and visualization of complex geometry." />
-    <meta name="keywords" content="trefoil, trefoil knot, parametric surface, parametric curve, 3D geometry, WebGL, Three.js, mathematical visualization, topology, knot theory" />
+    <meta name="color-scheme" content="dark" />
+
+    <!-- SEO -->
+    <title>Trefoil Torus Designer – 3D Knots, Parametric Surfaces &amp; Physics | FABUS</title>
+    <meta name="description" content="Free in-browser 3D designer for trefoil knots, torus knots and parametric, implicit and custom-formula surfaces. Real-time materials and reflections, physics, seven environments, 20 languages, GLB / OBJ / STL export." />
+    <meta name="keywords" content="trefoil knot, torus knot, parametric surface, implicit surface, 3D knot designer, mathematical visualization, knot theory, WebGL, Three.js, STL export, GLB export" />
     <meta name="author" content="KREA Makina / Tansu Ozcelebi" />
-    
-    <!-- Open Graph Meta Tags -->
-    <meta property="og:title" content="Trefoil Knot – Parametric 3D Surface Visualization" />
-    <meta property="og:description" content="A real-time interactive 3D visualization of the trefoil knot and parametric surfaces using WebGL and Three.js." />
-    <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://trefoil.krea.tr/preview.jpg" />
-    <meta property="og:url" content="https://trefoil.krea.tr/" />
-    
-    <!-- Twitter Card Meta Tags -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Trefoil Knot Visualization" />
-    <meta name="twitter:description" content="Interactive 3D trefoil knot built with Three.js and WebGL showcasing parametric geometry." />
-    <meta name="twitter:image" content="https://trefoil.krea.tr/preview.jpg" />
-    
-    <!-- Canonical URL -->
+    <meta name="robots" content="index, follow, max-image-preview:large" />
     <link rel="canonical" href="https://trefoil.krea.tr/" />
-    
-    <!-- Structured Data (JSON-LD Schema) -->
+
+    <!-- Open Graph -->
+    <meta property="og:site_name" content="Trefoil Torus Designer" />
+    <meta property="og:title" content="Trefoil Torus Designer – 3D Knots, Parametric Surfaces &amp; Physics" />
+    <meta property="og:description" content="Design trefoil and torus knots and mathematical surfaces in real time in your browser, with physics, materials and 3D export." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://trefoil.krea.tr/" />
+    <meta property="og:image" content="https://trefoil.krea.tr/preview.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="A glossy trefoil knot rendered in the Trefoil Torus Designer" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Trefoil Torus Designer – 3D Knots &amp; Parametric Surfaces" />
+    <meta name="twitter:description" content="Design trefoil and torus knots and mathematical surfaces in real time in your browser, with physics, materials and 3D export." />
+    <meta name="twitter:image" content="https://trefoil.krea.tr/preview.jpg" />
+
+    <!-- Structured data -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "CreativeWork",
-      "name": "Trefoil Knot Visualization",
-      "description": "Interactive 3D visualization of a trefoil knot and parametric surfaces using WebGL and Three.js.",
-      "keywords": ["trefoil knot", "parametric surface", "parametric curve", "3D visualization", "Three.js", "geometry", "mathematics", "knot theory", "WebGL"],
-      "author": {
-        "@type": "Organization",
-        "name": "Tansu Ozcelebi / Hobi projesi"
-      },
+      "@type": "WebApplication",
+      "name": "Trefoil Torus Designer",
       "url": "https://trefoil.krea.tr/",
-      "inLanguage": "en",
+      "description": "In-browser 3D designer for trefoil knots, torus knots and parametric, implicit and custom-formula surfaces with real-time materials, physics and 3D export.",
+      "applicationCategory": "DesignApplication",
+      "operatingSystem": "Any (modern web browser with WebGL)",
+      "browserRequirements": "Requires JavaScript and WebGL",
+      "image": "https://trefoil.krea.tr/preview.jpg",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "featureList": [
+        "Trefoil, septafoil and other torus knots",
+        "Parametric, explicit and implicit surfaces with custom formulas",
+        "Physically based materials and real-time reflections",
+        "Physics simulation",
+        "GLB, GLTF, OBJ, STL and PLY export",
+        "20 interface languages"
+      ],
+      "keywords": "trefoil knot, torus knot, parametric surface, knot theory, 3D visualization, WebGL, Three.js",
+      "author": { "@type": "Person", "name": "Tansu Ozcelebi" },
+      "publisher": { "@type": "Organization", "name": "KREA Makina" },
       "license": "https://creativecommons.org/licenses/by/4.0/",
       "datePublished": "2025-11-01"
     }
     </script>
-    
+
     <style>
       html,body{height:100%;margin:0;background:#0b0f14;}
       canvas{display:block;width:100%;height:100%;}
-      #overlay{position:fixed;left:12px;top:12px;color:#cfe; font-family: Inter, system-ui, sans-serif}
-      
+      /* Page heading for search engines and screen readers (the app is all canvas) */
+      .sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+      /* Shown until the app has started */
+      #tc-boot{position:fixed;inset:0;z-index:5000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#0b0f14;color:#9db7d3;font:500 13px Inter,system-ui,sans-serif;transition:opacity .35s ease}
+      #tc-boot img{width:72px;height:72px;border-radius:16px;animation:tc-boot-pulse 1.6s ease-in-out infinite}
+      @keyframes tc-boot-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.92);opacity:.7}}
+      @media (prefers-reduced-motion: reduce){#tc-boot img{animation:none}}
+      noscript{position:fixed;inset:0;z-index:6000;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;background:#0b0f14;color:#cfe;font:15px Inter,system-ui,sans-serif}
+
       /* Mobile responsive styles */
       @media (max-width: 768px) {
         /* Adjust touch gizmo size for mobile */
@@ -80,15 +101,13 @@
           transform: scale(0.7) !important;
         }
         
-        /* Smaller font for active info */
-        #overlay {
-          font-size: 10px;
-        }
       }
     </style>
   </head>
   <body>
+    <h1 class="sr-only">Trefoil Torus Designer — interactive 3D knots and parametric surfaces</h1>
+    <div id="tc-boot" aria-hidden="true"><img src="/favicon.svg" alt="" /><span>Trefoil Torus Designer</span></div>
+    <noscript>Trefoil Torus Designer is an interactive 3D app and needs JavaScript and WebGL to run.</noscript>
     <script type="module" src="/src/mainapp.js"></script>
-    <div id="overlay">TreFoil Torus Designer — Tansu Ozcelebi '25</div>
   </body>
 </html>

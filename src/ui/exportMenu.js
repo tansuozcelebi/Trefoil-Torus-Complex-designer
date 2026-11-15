@@ -163,6 +163,9 @@ export async function exportAsPLY(mesh, objectName = 'Object') {
   }
 }
 
+// File formats offered by the Export panel, in menu order.
+export const EXPORT_FORMATS = ['glb', 'gltf', 'obj', 'stl', 'ply'];
+
 export function setupExportPanel(panel, getActiveRecord, getCurrentLanguage) {
   if (!panel) return;
   
@@ -209,17 +212,13 @@ export function setupExportPanel(panel, getActiveRecord, getCurrentLanguage) {
     const nextCode = (exportCounter + 1).toString().padStart(4, '0');
     
     panel.innerHTML = `
-      <div style="min-width: 320px;">
+      <div style="min-width: min(320px, 100%);">
         <h3 style="margin-top: 0; margin-bottom: 12px; color: #9fc8ff;">${t.title}</h3>
         
         <div style="margin-bottom: 16px;">
           <label style="display: block; margin-bottom: 6px; font-weight: 500;">${t.selectFormat}</label>
           <select id="exportFormat" style="width: 100%; padding: 8px; border-radius: 6px; background: rgba(40,40,50,0.9); color: #fff; border: 1px solid rgba(100,100,120,0.5); font-size: 13px;">
-            <option value="glb">${t.formats.glb}</option>
-            <option value="gltf">${t.formats.gltf}</option>
-            <option value="obj">${t.formats.obj}</option>
-            <option value="stl">${t.formats.stl}</option>
-            <option value="ply">${t.formats.ply}</option>
+            ${EXPORT_FORMATS.map(f => `<option value="${f}">${t.formats[f]}</option>`).join('\n            ')}
           </select>
         </div>
         
